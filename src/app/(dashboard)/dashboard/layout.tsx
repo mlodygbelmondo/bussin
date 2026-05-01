@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import {
   AudioWaveform,
   BarChart3,
-  CalendarDays,
   CloudUpload,
   CreditCard,
   Grid2X2,
@@ -19,6 +18,7 @@ import { DashboardNav } from "@/app/(dashboard)/dashboard/dashboard-nav";
 import { APP_NAME, isMockMode } from "@/lib/app-config";
 import { createClient } from "@/lib/supabase/server";
 import { mockDashboardShell } from "@/modules/dev/mock-data";
+import type { DashboardNavItem } from "@/app/(dashboard)/dashboard/dashboard-nav";
 
 type DashboardShellData = {
   creditsLabel: string;
@@ -31,24 +31,37 @@ type DashboardShellData = {
 };
 
 const dashboardLinks = [
-  { href: "/dashboard", icon: Grid2X2, label: "Overview" },
-  { href: "/dashboard/generate", icon: Sparkles, label: "Generate" },
-  { href: "/dashboard/library", icon: Library, label: "Library" },
-  { href: "/dashboard/scheduled", icon: CloudUpload, label: "Uploads" },
-  { href: "/dashboard/scheduled", icon: CalendarDays, label: "Calendar" },
-  { href: "/dashboard/queue", icon: BarChart3, label: "Analytics" },
-  { href: "/dashboard/generate", icon: LayoutTemplate, label: "Templates" },
-  { href: "/dashboard/channels", icon: Link2, label: "Connections" },
-  { href: "/dashboard/billing", icon: CreditCard, label: "Billing" },
-  { href: "/dashboard/settings", icon: Settings, label: "Settings" },
-];
+  { href: "/dashboard", icon: "overview", label: "Overview" },
+  { href: "/dashboard/generate", icon: "generate", label: "Generate" },
+  { href: "/dashboard/library", icon: "library", label: "Library" },
+  { href: "/dashboard/scheduled", icon: "uploads", label: "Uploads" },
+  { href: "/dashboard/scheduled", icon: "calendar", label: "Calendar" },
+  { href: "/dashboard/queue", icon: "analytics", label: "Analytics" },
+  { href: "/dashboard/generate", icon: "templates", label: "Templates" },
+  { href: "/dashboard/channels", icon: "connections", label: "Connections" },
+  { href: "/dashboard/billing", icon: "billing", label: "Billing" },
+  { href: "/dashboard/settings", icon: "settings", label: "Settings" },
+] satisfies DashboardNavItem[];
 
 const mobileLinks = [
-  { href: "/dashboard", icon: Grid2X2, label: "Overview" },
-  { href: "/dashboard/generate", icon: Sparkles, label: "Generate" },
-  { href: "/dashboard/library", icon: Library, label: "Library" },
-  { href: "/dashboard/settings", icon: Settings, label: "More" },
-];
+  { href: "/dashboard", icon: "overview", label: "Overview" },
+  { href: "/dashboard/generate", icon: "generate", label: "Generate" },
+  { href: "/dashboard/library", icon: "library", label: "Library" },
+  { href: "/dashboard/settings", icon: "settings", label: "More" },
+] satisfies DashboardNavItem[];
+
+const mobileIconMap = {
+  analytics: BarChart3,
+  billing: CreditCard,
+  calendar: CloudUpload,
+  connections: Link2,
+  generate: Sparkles,
+  library: Library,
+  overview: Grid2X2,
+  settings: Settings,
+  templates: LayoutTemplate,
+  uploads: CloudUpload,
+} satisfies Record<DashboardNavItem["icon"], typeof Grid2X2>;
 
 export default async function DashboardLayout({
   children,
@@ -126,7 +139,7 @@ export default async function DashboardLayout({
       </aside>
       <nav className="grid grid-cols-4 border-b border-white/10 bg-[#071021] p-2 md:hidden">
         {mobileLinks.map((item) => {
-          const Icon = item.icon;
+          const Icon = mobileIconMap[item.icon];
 
           return (
             <Link

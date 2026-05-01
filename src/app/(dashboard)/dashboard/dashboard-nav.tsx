@@ -2,13 +2,46 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { LucideIcon } from "lucide-react";
+import {
+  BarChart3,
+  CloudUpload,
+  CreditCard,
+  Grid2X2,
+  LayoutTemplate,
+  Library,
+  Link2,
+  Settings,
+  Sparkles,
+} from "lucide-react";
 
 export type DashboardNavItem = {
   href: string;
-  icon: LucideIcon;
+  icon:
+    | "overview"
+    | "generate"
+    | "library"
+    | "uploads"
+    | "calendar"
+    | "analytics"
+    | "templates"
+    | "connections"
+    | "billing"
+    | "settings";
   label: string;
 };
+
+const iconMap = {
+  analytics: BarChart3,
+  billing: CreditCard,
+  calendar: CloudUpload,
+  connections: Link2,
+  generate: Sparkles,
+  library: Library,
+  overview: Grid2X2,
+  settings: Settings,
+  templates: LayoutTemplate,
+  uploads: CloudUpload,
+} satisfies Record<DashboardNavItem["icon"], typeof Grid2X2>;
 
 export function DashboardNav({ items }: { items: DashboardNavItem[] }) {
   const pathname = usePathname();
@@ -16,7 +49,7 @@ export function DashboardNav({ items }: { items: DashboardNavItem[] }) {
   return (
     <nav className="grid gap-1 px-4 py-5">
       {items.map((item) => {
-        const Icon = item.icon;
+        const Icon = iconMap[item.icon];
         const isActive =
           pathname === item.href ||
           (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));

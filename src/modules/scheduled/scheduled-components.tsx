@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ScheduledUploadActions } from "@/modules/scheduled/scheduled-action-buttons";
+import { ScheduledSelect } from "@/modules/scheduled/scheduled-select";
 import type {
   ScheduledFilters,
   ScheduledScreenData,
@@ -561,34 +562,6 @@ function EmptyUploadSlot() {
         scheduled
       </div>
     </div>
-  );
-}
-
-function ScheduledSelect({
-  name,
-  options,
-  value,
-}: {
-  name: string;
-  options: { label: string; value: string }[];
-  value: string;
-}) {
-  return (
-    <label className="relative">
-      <select
-        className="h-10 w-full appearance-none rounded-lg border border-white/10 bg-[#0c1527] px-4 pr-9 text-sm font-medium text-white outline-none"
-        defaultValue={value}
-        name={name}
-        onChange={(event) => event.currentTarget.form?.requestSubmit()}
-      >
-        {options.map((option) => (
-          <option key={`${name}-${option.value}`} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute top-3 right-3 size-4 text-slate-400" />
-    </label>
   );
 }
 
