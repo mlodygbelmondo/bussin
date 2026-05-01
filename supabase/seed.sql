@@ -1,0 +1,2 @@
+-- Task 2 intentionally keeps seed data empty.
+-- RLS integration tests create isolated auth users and workspaces at runtime.

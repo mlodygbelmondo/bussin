@@ -1,26 +1,704 @@
 @import "tailwindcss";
+@plugin "daisyui";
+@custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --radius: 0.5rem;
+  --background: oklch(0.145 0.032 266);
+  --foreground: oklch(0.955 0.018 260);
+  --card: oklch(0.19 0.035 264);
+  --card-foreground: oklch(0.955 0.018 260);
+  --popover: oklch(0.17 0.034 266);
+  --popover-foreground: oklch(0.955 0.018 260);
+  --primary: oklch(0.62 0.22 292);
+  --primary-foreground: oklch(0.985 0.006 260);
+  --secondary: oklch(0.235 0.04 263);
+  --secondary-foreground: oklch(0.9 0.02 260);
+  --muted: oklch(0.235 0.036 263);
+  --muted-foreground: oklch(0.68 0.044 262);
+  --accent: oklch(0.28 0.075 286);
+  --accent-foreground: oklch(0.94 0.02 270);
+  --destructive: oklch(0.63 0.2 24);
+  --border: oklch(0.45 0.075 270 / 34%);
+  --input: oklch(0.23 0.04 264);
+  --ring: oklch(0.68 0.19 292);
+  --panel: oklch(0.18 0.038 264 / 88%);
+  --panel-strong: oklch(0.215 0.046 264 / 94%);
+  --panel-soft: oklch(0.25 0.052 266 / 54%);
+  --line: oklch(0.5 0.078 274 / 28%);
+  --success: oklch(0.68 0.15 173);
+  --warning: oklch(0.78 0.14 77);
+  --danger: oklch(0.64 0.2 24);
 }
 
 @theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  color-scheme: dark;
+}
+
+html {
+  min-height: 100%;
+}
+
+* {
+  border-color: var(--border);
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(
+      circle at 78% 12%,
+      oklch(0.43 0.17 292 / 20%),
+      transparent 28rem
+    ),
+    radial-gradient(
+      circle at 18% 2%,
+      oklch(0.38 0.13 230 / 18%),
+      transparent 24rem
+    ),
+    linear-gradient(180deg, oklch(0.16 0.036 266), var(--background) 40%);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  letter-spacing: 0;
+}
+
+::selection {
+  background: oklch(0.62 0.22 292 / 42%);
+  color: var(--foreground);
+}
+
+.bussin-panel {
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, oklch(1 0 0 / 5%), transparent 42%), var(--panel);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 7%),
+    0 18px 50px oklch(0.08 0.03 260 / 36%);
+}
+
+.bussin-grid {
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+.bussin-waveform {
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      oklch(0.68 0.19 292 / 35%),
+      transparent
+    ),
+    repeating-linear-gradient(
+      90deg,
+      oklch(0.68 0.19 292 / 86%) 0 3px,
+      transparent 3px 9px
+    );
+  mask-image: radial-gradient(ellipse at center, black 0 58%, transparent 78%);
+}
+
+.bussin-spectrum {
+  background:
+    radial-gradient(
+      circle at 50% 100%,
+      oklch(0.7 0.2 292 / 62%),
+      transparent 38%
+    ),
+    linear-gradient(180deg, oklch(0.43 0.15 292 / 50%), transparent);
+}
+
+.dashboard-grid {
+  background:
+    radial-gradient(
+      circle at 64% 12%,
+      oklch(0.38 0.18 292 / 20%),
+      transparent 23rem
+    ),
+    radial-gradient(
+      circle at 84% 60%,
+      oklch(0.36 0.13 234 / 14%),
+      transparent 24rem
+    );
+}
+
+.dashboard-waves {
+  background: repeating-radial-gradient(
+    ellipse at 50% 90%,
+    transparent 0 8px,
+    oklch(0.6 0.22 292 / 16%) 9px 10px
+  );
+  transform: rotate(-10deg) scaleX(1.3);
+}
+
+.dashboard-eq {
+  background:
+    radial-gradient(
+      circle at 50% 68%,
+      oklch(0.64 0.24 292 / 38%),
+      transparent 36%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 8px,
+      oklch(0.68 0.22 292 / 90%) 9px 11px,
+      transparent 12px 18px,
+      oklch(0.72 0.17 222 / 90%) 19px 21px
+    );
+  mask-image: radial-gradient(ellipse at center, black 0 56%, transparent 78%);
+}
+
+.track-hero-panel {
+  background:
+    radial-gradient(
+      circle at 72% 16%,
+      oklch(0.48 0.22 286 / 24%),
+      transparent 25rem
+    ),
+    radial-gradient(
+      circle at 90% 48%,
+      oklch(0.5 0.17 231 / 22%),
+      transparent 25rem
+    ),
+    linear-gradient(180deg, oklch(1 0 0 / 5%), transparent 42%), var(--panel);
+}
+
+.track-waveform {
+  align-items: center;
+  display: flex;
+  gap: 3px;
+  justify-content: flex-end;
+  padding: 0 18px;
+}
+
+.track-waveform span {
+  --bar-index: 0;
+  background: linear-gradient(
+    180deg,
+    oklch(0.68 0.24 286 / 8%),
+    oklch(0.72 0.23 286 / 86%) 48%,
+    oklch(0.68 0.18 230 / 82%)
+  );
+  border-radius: 999px;
+  box-shadow: 0 0 18px oklch(0.66 0.24 286 / 45%);
+  height: calc(
+    18px + (sin((var(--bar-index) + 5) * 0.65) + 1) * 38px +
+      (sin((var(--bar-index) + 11) * 0.19) + 1) * 18px
+  );
+  opacity: calc(0.16 + (var(--bar-index) / 96) * 0.72);
+  width: 2px;
+}
+
+.track-waveform span:nth-child(3n) {
+  background: linear-gradient(
+    180deg,
+    oklch(0.78 0.18 231 / 7%),
+    oklch(0.7 0.18 231 / 78%)
+  );
+}
+
+.track-cover-fallback {
+  background:
+    radial-gradient(
+      circle at 50% 34%,
+      oklch(0.86 0.16 319 / 72%),
+      transparent 10%
+    ),
+    radial-gradient(
+      circle at 50% 42%,
+      oklch(0.66 0.23 286 / 52%),
+      transparent 20%
+    ),
+    linear-gradient(180deg, oklch(0.22 0.11 302), oklch(0.14 0.07 258) 58%),
+    linear-gradient(120deg, oklch(0.58 0.25 18), oklch(0.52 0.2 292));
+  overflow: hidden;
+  position: relative;
+}
+
+.track-cover-fallback::before {
+  background:
+    linear-gradient(
+      82deg,
+      transparent 0 44%,
+      oklch(0.56 0.25 18 / 78%) 45% 47%,
+      transparent 48%
+    ),
+    linear-gradient(
+      98deg,
+      transparent 0 51%,
+      oklch(0.64 0.2 228 / 82%) 52% 54%,
+      transparent 55%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 14px,
+      oklch(0.08 0.04 260 / 88%) 15px 32px,
+      transparent 33px 44px
+    );
+  clip-path: polygon(0 8%, 100% 0, 100% 68%, 0 82%);
+  content: "";
+  inset: 0;
+  opacity: 0.84;
+  position: absolute;
+}
+
+.track-cover-fallback::after {
+  background:
+    linear-gradient(
+      180deg,
+      transparent 0 42%,
+      oklch(0.66 0.21 226 / 72%) 43% 45%,
+      oklch(0.54 0.23 18 / 85%) 52% 54%,
+      transparent 60%
+    ),
+    linear-gradient(
+      115deg,
+      transparent 0 47%,
+      oklch(0.15 0.07 252) 48% 54%,
+      transparent 55%
+    );
+  content: "";
+  inset: 0;
+  position: absolute;
+}
+
+.album-art {
+  border: 1px solid oklch(1 0 0 / 14%);
+  border-radius: 0.375rem;
+  display: block;
+  height: 2rem;
+  overflow: hidden;
+  position: relative;
+  width: 2rem;
+}
+
+.album-art::after {
+  background:
+    linear-gradient(
+      135deg,
+      transparent 0 42%,
+      oklch(1 0 0 / 56%) 43% 46%,
+      transparent 47%
+    ),
+    radial-gradient(circle at 70% 25%, oklch(1 0 0 / 40%), transparent 24%);
+  content: "";
+  inset: 0;
+  position: absolute;
+}
+
+.album-art-0,
+.album-art-4 {
+  background: linear-gradient(135deg, #4f46e5, #e11d48 52%, #f59e0b);
+}
+
+.album-art-1,
+.album-art-5 {
+  background: linear-gradient(135deg, #0ea5e9, #172554 52%, #22d3ee);
+}
+
+.album-art-2 {
+  background: linear-gradient(135deg, #1d4ed8, #7c3aed 48%, #06b6d4);
+}
+
+.album-art-3 {
+  background: linear-gradient(135deg, #f97316, #7c2d12 50%, #a855f7);
+}
+
+.queue-art {
+  border: 1px solid oklch(1 0 0 / 12%);
+  border-radius: 0.375rem;
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 12%),
+    0 16px 34px oklch(0.09 0.04 265 / 34%);
+  height: 5rem;
+  overflow: hidden;
+  position: relative;
+  width: 5rem;
+}
+
+.queue-art::before {
+  background:
+    linear-gradient(180deg, transparent 0 42%, oklch(0.06 0.02 260 / 72%)),
+    repeating-linear-gradient(
+      90deg,
+      oklch(0.06 0.03 265 / 72%) 0 7px,
+      transparent 7px 16px
+    );
+  bottom: 0;
+  content: "";
+  height: 46%;
+  left: 0;
+  position: absolute;
+  right: 0;
+}
+
+.queue-art::after {
+  background:
+    radial-gradient(
+      circle at 50% 44%,
+      oklch(0.96 0.08 308 / 70%),
+      transparent 9%
+    ),
+    linear-gradient(
+      135deg,
+      transparent 0 45%,
+      oklch(1 0 0 / 58%) 46% 47%,
+      transparent 48%
+    );
+  content: "";
+  inset: 0;
+  position: absolute;
+}
+
+.queue-art-0 {
+  background:
+    radial-gradient(circle at 55% 34%, #ff7ad9, transparent 18%),
+    linear-gradient(135deg, #111827, #6d28d9 45%, #db2777 70%, #0f172a);
+}
+
+.queue-art-1 {
+  background:
+    radial-gradient(circle at 55% 28%, #bae6fd, transparent 19%),
+    linear-gradient(135deg, #075985, #1d4ed8 50%, #22d3ee);
+}
+
+.queue-art-2 {
+  background:
+    radial-gradient(circle at 52% 34%, #fed7aa, transparent 20%),
+    linear-gradient(135deg, #581c87, #db2777 48%, #f97316);
+}
+
+.queue-art-3 {
+  background:
+    radial-gradient(circle at 50% 30%, #e9d5ff, transparent 20%),
+    linear-gradient(135deg, #312e81, #7c3aed 50%, #06b6d4);
+}
+
+.queue-art-4 {
+  background:
+    radial-gradient(circle at 50% 32%, #fef3c7, transparent 18%),
+    linear-gradient(135deg, #7c2d12, #ea580c 45%, #7c3aed);
+}
+
+.queue-art-5 {
+  background:
+    radial-gradient(circle at 52% 30%, #f0abfc, transparent 19%),
+    linear-gradient(135deg, #164e63, #7e22ce 48%, #ec4899);
+}
+
+.library-cover-art {
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.library-cover-art::before,
+.library-cover-art::after {
+  content: "";
+  position: absolute;
+}
+
+.library-cover-art-0 {
+  background:
+    radial-gradient(circle at 50% 38%, #ff7ad9 0 7%, transparent 19%),
+    radial-gradient(circle at 50% 38%, #7c3aed 0 15%, transparent 28%),
+    linear-gradient(180deg, #20114f 0%, #500c4f 42%, #061126 100%);
+}
+
+.library-cover-art-0::before {
+  background:
+    linear-gradient(90deg, transparent 0 7%, #07101f 7% 18%, transparent 18%),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 36px,
+      #090c1a 37px 57px,
+      transparent 58px 72px
+    );
+  bottom: 0;
+  clip-path: polygon(0 36%, 100% 10%, 100% 100%, 0 100%);
+  height: 58%;
+  inset-inline: 0;
+}
+
+.library-cover-art-0::after {
+  background: linear-gradient(90deg, #fb185f, #7137ff, #00d4ff);
+  bottom: 12%;
+  height: 3px;
+  left: 14%;
+  transform: perspective(90px) rotateX(58deg);
+  width: 72%;
+}
+
+.library-cover-art-1 {
+  background:
+    radial-gradient(circle at 57% 34%, #38bdf8, transparent 11%),
+    radial-gradient(circle at 48% 42%, #ef4444, transparent 5%),
+    linear-gradient(180deg, #071326 0%, #101843 48%, #050816 100%);
+}
+
+.library-cover-art-1::before {
+  background:
+    linear-gradient(90deg, transparent 0 42%, #030712 43% 55%, transparent 56%),
+    linear-gradient(
+      180deg,
+      transparent 0 48%,
+      #ef4444 49% 51%,
+      transparent 52%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      #07101f 0 18px,
+      transparent 19px 34px,
+      #0ea5e9 35px 37px
+    );
+  bottom: 0;
+  height: 48%;
+  inset-inline: 0;
+}
+
+.library-cover-art-1::after {
+  background: #0f172a;
+  border-radius: 999px 999px 12px 12px;
+  bottom: 17%;
+  box-shadow:
+    24px 6px 0 #ef4444,
+    -22px 8px 0 #38bdf8,
+    0 0 34px #ef4444;
+  height: 24px;
+  left: 46%;
+  width: 62px;
+}
+
+.library-cover-art-2 {
+  background:
+    radial-gradient(
+      circle at 68% 30%,
+      #e9d5ff 0 14%,
+      #7c3aed 15% 24%,
+      transparent 25%
+    ),
+    linear-gradient(180deg, #311261 0%, #1e1b4b 52%, #120821 100%);
+}
+
+.library-cover-art-2::before {
+  background:
+    linear-gradient(
+      135deg,
+      transparent 0 45%,
+      #f0abfc 46% 47%,
+      transparent 48%
+    ),
+    linear-gradient(180deg, transparent 0 42%, #2e1065 43% 100%);
+  bottom: 0;
+  clip-path: polygon(
+    0 78%,
+    32% 42%,
+    56% 64%,
+    82% 30%,
+    100% 54%,
+    100% 100%,
+    0 100%
+  );
+  height: 70%;
+  inset-inline: 0;
+}
+
+.library-cover-art-2::after {
+  background: #0f172a;
+  border-radius: 999px 999px 8px 8px;
+  bottom: 20%;
+  box-shadow: 0 0 32px #a855f7;
+  height: 42px;
+  left: 44%;
+  width: 18px;
+}
+
+.library-cover-art-3 {
+  background:
+    radial-gradient(
+      circle at 50% 45%,
+      transparent 0 8%,
+      #8b5cf6 9% 10%,
+      transparent 11% 16%,
+      #4f46e5 17% 18%,
+      transparent 19%
+    ),
+    radial-gradient(circle at 50% 45%, #7c3aed, transparent 40%),
+    linear-gradient(180deg, #0f1740 0%, #27104d 48%, #08111f 100%);
+}
+
+.library-cover-art-3::before {
+  background:
+    linear-gradient(180deg, transparent 0 56%, #0f172a 57% 100%),
+    radial-gradient(ellipse at 50% 76%, #22d3ee, transparent 24%);
+  inset: 0;
+}
+
+.library-cover-art-3::after {
+  border: 1px solid rgb(168 85 247 / 70%);
+  border-radius: 50%;
+  height: 42%;
+  left: 29%;
+  top: 24%;
+  width: 42%;
+}
+
+.library-cover-art-4 {
+  background:
+    radial-gradient(circle at 42% 40%, #f472b6, transparent 9%),
+    linear-gradient(180deg, #081525 0%, #172554 52%, #050816 100%);
+}
+
+.library-cover-art-4::before {
+  background:
+    linear-gradient(90deg, transparent 0 45%, #020617 46% 54%, transparent 55%),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 22px,
+      #0f172a 23px 38px,
+      transparent 39px 54px
+    );
+  bottom: 0;
+  height: 55%;
+  inset-inline: 0;
+}
+
+.library-cover-art-4::after {
+  background: linear-gradient(90deg, #ef4444, #ec4899, #38bdf8);
+  bottom: 8%;
+  height: 2px;
+  left: 12%;
+  transform: rotate(-8deg);
+  width: 76%;
+}
+
+.library-cover-art-5 {
+  background:
+    radial-gradient(circle at 50% 35%, #fed7aa 0 18%, transparent 19%),
+    linear-gradient(180deg, #7e22ce 0%, #db2777 50%, #0f172a 100%);
+}
+
+.library-cover-art-5::before {
+  background:
+    linear-gradient(70deg, transparent 0 45%, #08111f 46% 48%, transparent 49%),
+    linear-gradient(110deg, transparent 0 53%, #08111f 54% 56%, transparent 57%);
+  inset: 0;
+}
+
+.library-cover-art-5::after {
+  background: #07101f;
+  bottom: 0;
+  clip-path: polygon(0 72%, 100% 46%, 100% 100%, 0 100%);
+  height: 48%;
+  inset-inline: 0;
+}
+
+.library-cover-art-6 {
+  background:
+    radial-gradient(circle at 52% 50%, #ec4899 0 6%, transparent 17%),
+    conic-gradient(from 45deg at 50% 50%, #111827, #1d4ed8, #7c3aed, #111827);
+}
+
+.library-cover-art-6::before {
+  background:
+    linear-gradient(
+      120deg,
+      transparent 0 47%,
+      #38bdf8 48% 49%,
+      transparent 50%
+    ),
+    linear-gradient(60deg, transparent 0 47%, #a855f7 48% 49%, transparent 50%),
+    linear-gradient(180deg, transparent 0 47%, #ec4899 48% 49%, transparent 50%);
+  inset: 0;
+}
+
+.library-cover-art-6::after {
+  border: 1px solid rgb(216 180 254 / 54%);
+  height: 34%;
+  left: 33%;
+  top: 32%;
+  transform: rotate(45deg);
+  width: 34%;
+}
+
+.status-pill {
+  align-items: center;
+  border-radius: 0.375rem;
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 500;
+  gap: 0.375rem;
+  line-height: 1;
+  padding: 0.5rem 0.75rem;
+}
+
+.status-pill-blue {
+  background: oklch(0.52 0.18 241 / 16%);
+  color: oklch(0.78 0.14 236);
+}
+
+.status-pill-cyan {
+  background: oklch(0.62 0.14 210 / 14%);
+  color: oklch(0.77 0.13 220);
+}
+
+.status-pill-red {
+  background: oklch(0.58 0.2 24 / 16%);
+  color: oklch(0.72 0.18 24);
+}
+
+.status-pill-violet {
+  background: oklch(0.58 0.22 292 / 16%);
+  color: oklch(0.78 0.16 292);
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+.bussin-shimmer::after {
+  animation: shimmer 2.4s ease-in-out infinite;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    oklch(1 0 0 / 12%),
+    transparent
+  );
+  content: "";
+  inset: 0;
+  position: absolute;
+  transform: translateX(-120%);
 }

@@ -1,0 +1,73 @@
+import type { QueueClient } from "../queue/queue-client";
+import { enqueueYoutubeUploadJob } from "../queue/queue-client";
+import {
+  QUEUE_NAMES,
+  type RenderJobPayload,
+  parseQueuePayload,
+} from "../queue/queue-types";
+import type { WorkerDatabaseService } from "../services/database";
+import type { FfmpegService } from "../services/ffmpeg";
+import type { WorkerStorageService } from "../services/storage";
+
+export async function renderVideoJob(
+  rawPayload: RenderJobPayload,
+  services: {
+    database: WorkerDatabaseService;
+    ffmpeg: FfmpegService;
+    queue: QueueClient;
+    storage: WorkerStorageService;
+  },
+) {
+  const payload = parseQueuePayload(QUEUE_NAMES.render, rawPayload);
+
+  await services.database.updateTrackStatus({
+    status: "rendering",
+    trackId: payload.trackId,
+    workspaceId: payload.workspaceId,
+  });
+  await services.database.updateVideoRenderStatus({
+    status: "running",
+    videoRenderId: payload.videoRenderId,
+    workspaceId: payload.workspaceId,
+  });
+
+  const context = await services.database.getRenderContext(payload);
+  const render = await services.ffmpeg.renderVideo({
+    audioInput: context.audioStoragePath,
+    imageInput: context.imageStoragePath,
+    trackId: payload.trackId,
+    videoRenderId: payload.videoRenderId,
+    workspaceId: payload.workspaceId,
+  });
+  const videoStoragePath = await services.storage.uploadVideo({
+    trackId: payload.trackId,
+    video: render.video,
+    videoRenderId: payload.videoRenderId,
+    workspaceId: payload.workspaceId,
+  });
+
+  await services.database.saveVideoRenderOutput({
+    videoRenderId: payload.videoRenderId,
+    videoStoragePath,
+    workspaceId: payload.workspaceId,
+  });
+  await services.database.updateVideoRenderStatus({
+    status: "rendered",
+    videoRenderId: payload.videoRenderId,
+    workspaceId: payload.workspaceId,
+  });
+  await services.database.updateTrackStatus({
+    status: "rendered",
+    trackId: payload.trackId,
+    workspaceId: payload.workspaceId,
+  });
+
+  if (context.publishNow && context.youtubeUploadId) {
+    await enqueueYoutubeUploadJob(services.queue, {
+      trackId: payload.trackId,
+      videoRenderId: payload.videoRenderId,
+      workspaceId: payload.workspaceId,
+      youtubeUploadId: context.youtubeUploadId,
+    });
+  }
+}

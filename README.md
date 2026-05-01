@@ -1,36 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<p align="center">
+  <img src="./src/app/favicon.ico" alt="Bussin icon" width="64" />
+</p>
 
-## Getting Started
+# Bussin
 
-First, run the development server:
+Bussin is a Next.js dashboard for generating instrumental tracks with Suno, rendering static-image videos with FFmpeg, and publishing or scheduling them on YouTube.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+> [!NOTE]
+> The app supports `live` and `mock` modes. Use mock mode for local development without real external credentials.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## What it does
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Collects a music brief and turns it into Suno generation requests
+- Polls Suno jobs, previews tracks, and supports approve/reject flows
+- Renders MP4s with a static image in the external worker
+- Uploads or schedules videos on YouTube
+- Manages subscriptions and usage limits with Stripe
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Stack
 
-## Learn More
+- Next.js 16 App Router, React 19, TypeScript
+- Supabase Auth, Postgres, RLS, Storage, Queues, Cron, Edge Functions
+- Stripe billing and webhooks
+- External Node.js worker for polling, rendering, and uploads
+- Tailwind CSS 4, daisyUI, shadcn-style local UI components
+- Zod, React Hook Form, TanStack Query, Vitest, Playwright
 
-To learn more about Next.js, take a look at the following resources:
+## Main areas
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Auth and signup
+- Onboarding for Suno and YouTube connections
+- Dashboard overview
+- Track generation
+- Generation queue
+- Track preview and approval
+- Library
+- Scheduled uploads
+- Channel management
+- Billing and settings
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Repository layout
 
-## Deploy on Vercel
+- `src/app` app routes, layouts, and route handlers
+- `src/components` shared UI and common components
+- `src/server` server-side services, actions, routes, and validators
+- `src/lib` config, env validation, Supabase clients, integrations, and schemas
+- `worker/src` external job processor
+- `supabase/migrations` schema, RLS, queues, cron, and storage setup
+- `supabase/functions` Edge Functions
+- `docs` staged implementation docs and task order
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Local setup
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Copy `.env.example` to `.env.local` and fill in the values you want to use.
+2. Install dependencies with `pnpm install`.
+3. Start Supabase with `pnpm supabase:start`.
+4. Run the app with `pnpm dev`.
+5. Run the worker in another terminal with `pnpm worker`.
+
+> [!TIP]
+> If the local Supabase binary is not available after install, run `pnpm approve-builds`.
+
+## Scripts
+
+| Command               | Description                          |
+| --------------------- | ------------------------------------ |
+| `pnpm dev`            | Start the Next.js app                |
+| `pnpm worker`         | Start the external worker            |
+| `pnpm build`          | Build the app for production         |
+| `pnpm start`          | Run the production build             |
+| `pnpm lint`           | Run ESLint                           |
+| `pnpm format`         | Format the codebase                  |
+| `pnpm format:check`   | Check formatting                     |
+| `pnpm typecheck`      | Run TypeScript checks                |
+| `pnpm test`           | Run Vitest                           |
+| `pnpm test:e2e`       | Run Playwright tests                 |
+| `pnpm supabase:start` | Start the local Supabase stack       |
+| `pnpm supabase:stop`  | Stop the local Supabase stack        |
+| `pnpm supabase:reset` | Reset local Supabase data            |
+| `pnpm db:types`       | Regenerate Supabase TypeScript types |
+
+## Environment
+
+Environment validation lives in `src/lib/env.ts`. The app expects public app and Supabase settings plus server-only keys for:
+
+- Supabase service role
+- Stripe secret and webhook secret
+- Google OAuth client credentials
+- Suno API access and base URL
+- Secrets encryption
+- Worker tuning values
+
+## Development notes
+
+- FFmpeg work lives only in the external worker.
+- Stripe subscription state comes from webhooks, not redirects.
+- Workspace-owned data must stay scoped by RLS.
+- See `docs/README.md` for the staged implementation order and product scope.
