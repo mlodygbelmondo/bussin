@@ -15,12 +15,13 @@ type GeneratePageProps = {
 export default async function GeneratePage({
   searchParams,
 }: GeneratePageProps) {
+  const params = await searchParams;
   const user = isMockMode
     ? { id: mockUser.id }
     : (await (await createClient()).auth.getUser()).data.user;
 
   if (!user) {
-    redirect("/login");
+    redirect(`/login?next=${encodeURIComponent(generateNextPath(params))}`);
   }
 
   const data = await getGenerateScreenData(user.id);
@@ -29,7 +30,6 @@ export default async function GeneratePage({
     redirect("/onboarding");
   }
 
-  const params = await searchParams;
   const prefill = toPrefill(params);
 
   return (
@@ -103,6 +103,24 @@ function toPrefill(
     mood: singleParam(params?.mood),
     style: singleParam(params?.style),
   };
+}
+
+function generateNextPath(
+  params?: Record<string, string | string[] | undefined>,
+) {
+  const search = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params ?? {})) {
+    if (Array.isArray(value)) {
+      value.forEach((item) => search.append(key, item));
+    } else if (value) {
+      search.set(key, value);
+    }
+  }
+
+  const query = search.toString();
+
+  return query ? `/dashboard/generate?${query}` : "/dashboard/generate";
 }
 
 function singleParam(value: string | string[] | undefined) {

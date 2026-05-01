@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
+import { isMockMode, mockUser } from "@/lib/app-config";
 import { createClient } from "@/lib/supabase/server";
 import { getBillingPageData } from "@/modules/billing/billing-page.queries";
 import { BillingSettingsScreen } from "@/modules/billing/billing-settings-screen";
 
 export default async function SettingsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = isMockMode
+    ? { id: mockUser.id }
+    : (await (await createClient()).auth.getUser()).data.user;
 
   if (!user) {
     redirect("/login");

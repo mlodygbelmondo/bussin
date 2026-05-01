@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  CalendarDays,
   CloudUpload,
   CreditCard,
   Grid2X2,
@@ -33,7 +34,7 @@ export type DashboardNavItem = {
 const iconMap = {
   analytics: BarChart3,
   billing: CreditCard,
-  calendar: CloudUpload,
+  calendar: CalendarDays,
   connections: Link2,
   generate: Sparkles,
   library: Library,

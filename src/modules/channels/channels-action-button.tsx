@@ -38,8 +38,8 @@ export function ChannelsActionButton(props: ChannelsActionButtonProps) {
     <Button
       className={
         props.kind === "disconnect"
-          ? "h-9 flex-1 border-red-300/15 bg-red-500/5 px-3 text-red-300 hover:bg-red-500/10 hover:text-red-100"
-          : "h-9 flex-1 px-3 text-violet-200"
+          ? "h-9 w-full border-red-300/15 bg-red-500/5 px-3 text-red-300 hover:bg-red-500/10 hover:text-red-100"
+          : "h-9 w-full px-3 text-violet-200"
       }
       disabled={pending || props.disabled}
       onClick={() => {

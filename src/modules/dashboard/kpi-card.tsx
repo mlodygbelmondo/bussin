@@ -35,23 +35,23 @@ export function DashboardKpiCard({ kpi }: { kpi: DashboardKpi }) {
 
   return (
     <article
-      className="bussin-panel min-h-24 rounded-lg px-4 py-4"
+      className="bussin-panel min-h-28 rounded-lg px-4 py-4"
       data-testid={`kpi-card-${kpi.icon}`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex h-full items-start gap-3">
         <span
           className={`grid size-10 shrink-0 place-items-center rounded-lg bg-gradient-to-br ${toneClasses[kpi.tone]}`}
         >
           <Icon className="size-5" />
         </span>
-        <div className="min-w-0">
-          <p className="truncate text-xs font-medium text-slate-300">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium leading-snug text-slate-300">
             {kpi.label}
           </p>
-          <p className="mt-1 font-mono text-2xl font-semibold tracking-tight text-white">
+          <p className="mt-2 font-mono text-2xl font-semibold leading-none tracking-tight text-white">
             {kpi.value}
           </p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-2 text-xs leading-snug text-slate-500">
             <span className={trendClasses[kpi.trendTone]}>
               {kpi.trendLabel}
             </span>{" "}

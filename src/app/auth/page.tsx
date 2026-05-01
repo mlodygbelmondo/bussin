@@ -20,11 +20,15 @@ import { APP_NAME, isMockMode } from "@/lib/app-config";
 import { createClient } from "@/lib/supabase/server";
 
 type AuthPanel = "login" | "signup";
+type AuthSearchParams = {
+  error?: string;
+  next?: string | string[];
+};
 
 export default function AuthPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<AuthSearchParams>;
 }) {
   return <AuthScreen activePanel="login" searchParams={searchParams} />;
 }
@@ -34,20 +38,21 @@ export async function AuthScreen({
   searchParams,
 }: {
   activePanel: AuthPanel;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<AuthSearchParams>;
 }) {
   const params = await searchParams;
+  const next = safeRedirectPath(singleParam(params.next));
   const user = isMockMode
     ? null
     : (await (await createClient()).auth.getUser()).data.user;
 
   if (user) {
-    redirect("/dashboard");
+    redirect(next);
   }
 
   return (
-    <main className="min-h-[100dvh] bg-[#040917] p-1 text-white">
-      <section className="relative min-h-[calc(100dvh-0.5rem)] overflow-hidden rounded-xl border border-[#25314d] bg-[radial-gradient(circle_at_18%_84%,rgba(145,72,255,0.24),transparent_25rem),radial-gradient(circle_at_38%_70%,rgba(28,103,255,0.18),transparent_28rem),linear-gradient(135deg,#060b18_0%,#071126_50%,#060b18_100%)] px-6 py-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] lg:px-10">
+    <main className="min-h-[100dvh] bg-[#040917] text-white sm:p-1 xl:h-[100dvh] xl:overflow-hidden">
+      <section className="relative min-h-[100dvh] overflow-hidden border-[#25314d] bg-[radial-gradient(circle_at_18%_84%,rgba(145,72,255,0.24),transparent_25rem),radial-gradient(circle_at_38%_70%,rgba(28,103,255,0.18),transparent_28rem),linear-gradient(135deg,#060b18_0%,#071126_50%,#060b18_100%)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:min-h-[calc(100dvh-0.5rem)] sm:rounded-xl sm:border sm:px-6 sm:py-6 lg:px-8 lg:py-5 xl:h-[calc(100dvh-0.5rem)] xl:min-h-0">
         <header className="relative z-10 flex items-center justify-between gap-4">
           <Link
             className="flex items-center gap-3 text-[26px] font-semibold tracking-tight"
@@ -68,20 +73,22 @@ export async function AuthScreen({
           </div>
         </header>
 
-        <div className="relative z-10 mt-9 grid gap-8 xl:grid-cols-[0.67fr_1fr] xl:items-start">
+        <div className="relative z-10 mt-6 grid gap-6 xl:min-h-[calc(100dvh-7rem)] xl:grid-cols-[minmax(320px,0.62fr)_minmax(720px,1fr)] xl:items-stretch">
           <ValuePanel />
 
-          <section className="overflow-hidden rounded-xl border border-[#34415e] bg-[linear-gradient(135deg,rgba(31,39,65,0.92),rgba(10,18,35,0.94))] shadow-[0_28px_90px_rgba(0,0,0,0.36),inset_0_1px_0_rgba(255,255,255,0.08)]">
+          <section className="self-center overflow-hidden rounded-xl border border-[#34415e] bg-[linear-gradient(135deg,rgba(31,39,65,0.92),rgba(10,18,35,0.94))] shadow-[0_28px_90px_rgba(0,0,0,0.36),inset_0_1px_0_rgba(255,255,255,0.08)] xl:self-stretch">
             <div className="grid lg:grid-cols-2">
               <AuthForm
                 active={activePanel === "login"}
                 error={activePanel === "login" ? params.error : undefined}
                 kind="login"
+                next={next}
               />
               <AuthForm
                 active={activePanel === "signup"}
                 error={activePanel === "signup" ? params.error : undefined}
                 kind="signup"
+                next={next}
               />
             </div>
           </section>
@@ -93,9 +100,9 @@ export async function AuthScreen({
 
 function ValuePanel() {
   return (
-    <aside className="relative min-h-[760px] overflow-hidden rounded-xl xl:min-h-[820px]">
-      <div className="relative z-10 pt-12">
-        <h1 className="max-w-[570px] text-[44px] leading-[1.18] font-medium tracking-normal text-white sm:text-[56px]">
+    <aside className="relative hidden min-h-[640px] overflow-hidden rounded-xl xl:block xl:min-h-0">
+      <div className="relative z-10 pt-6">
+        <h1 className="max-w-[570px] text-[clamp(2.4rem,3vw,3.35rem)] leading-[1.16] font-medium tracking-normal text-white">
           Create. Preview.
           <br />
           Publish to{" "}
@@ -103,12 +110,12 @@ function ValuePanel() {
             YouTube.
           </span>
         </h1>
-        <p className="mt-6 max-w-[460px] text-lg leading-8 text-[#aeb7cb]">
+        <p className="mt-5 max-w-[460px] text-base leading-7 text-[#aeb7cb]">
           {APP_NAME} helps you generate original instrumental tracks with AI,
           preview in high quality, and publish directly to YouTube.
         </p>
 
-        <div className="mt-10 grid max-w-[430px] gap-9">
+        <div className="mt-7 grid max-w-[430px] gap-5">
           <Feature
             icon={<AudioLines className="size-7 text-[#c058ff]" />}
             text="Create unique instrumental tracks in any style or mood."
@@ -129,14 +136,14 @@ function ValuePanel() {
         </div>
       </div>
 
-      <div className="absolute right-0 bottom-8 left-0 h-[340px]">
+      <div className="absolute right-0 bottom-3 left-0 h-[300px]">
         <div className="absolute bottom-0 left-0 h-36 w-36 rounded-full border border-[#283653] bg-[radial-gradient(circle_at_42%_30%,#2b3457,#090d17_68%)] shadow-[0_0_40px_rgba(88,92,255,0.28)]">
           <div className="absolute inset-x-5 top-8 h-28 rounded-t-full border-[10px] border-[#202842]" />
           <div className="absolute bottom-0 left-[-8px] h-24 w-9 rounded-full border border-[#4c5c8d] bg-[#0d1328]" />
           <div className="absolute right-[-8px] bottom-0 h-24 w-9 rounded-full border border-[#4c5c8d] bg-[#0d1328]" />
         </div>
 
-        <div className="absolute right-0 bottom-12 left-36 h-64 rounded-[2rem] border border-[#23365b] bg-[linear-gradient(145deg,#0b1122,#111832)] shadow-[0_26px_80px_rgba(26,92,255,0.22)]">
+        <div className="absolute right-0 bottom-12 left-32 h-56 rounded-[2rem] border border-[#23365b] bg-[linear-gradient(145deg,#0b1122,#111832)] shadow-[0_26px_80px_rgba(26,92,255,0.22)]">
           <div className="absolute inset-x-8 bottom-8 flex h-40 items-end gap-2">
             {[
               28, 36, 22, 54, 42, 73, 46, 87, 62, 103, 78, 126, 97, 139, 111,
@@ -155,7 +162,7 @@ function ValuePanel() {
         </div>
       </div>
 
-      <div className="absolute bottom-8 left-0 z-20 max-w-[390px] rounded-lg border border-[#35415f] bg-[linear-gradient(135deg,rgba(43,51,82,0.95),rgba(35,29,69,0.94))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.36)] backdrop-blur">
+      <div className="absolute bottom-4 left-0 z-20 max-w-[390px] rounded-lg border border-[#35415f] bg-[linear-gradient(135deg,rgba(43,51,82,0.95),rgba(35,29,69,0.94))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.36)] backdrop-blur">
         <div className="text-4xl leading-none text-[#c9adff]">”</div>
         <p className="mt-1 text-sm leading-6 text-[#d6d9e5]">
           {APP_NAME} is my secret weapon for creating studio-quality
@@ -182,10 +189,12 @@ function AuthForm({
   active,
   error,
   kind,
+  next,
 }: {
   active: boolean;
   error?: string;
   kind: AuthPanel;
+  next: string;
 }) {
   const isSignup = kind === "signup";
   const title = isSignup ? "Sign up" : "Sign in";
@@ -194,11 +203,12 @@ function AuthForm({
   return (
     <form
       action={action}
-      className={`min-h-[760px] px-8 py-11 sm:px-10 lg:min-h-[820px] ${
+      className={`px-5 py-5 sm:px-8 sm:py-7 lg:flex lg:min-h-[640px] lg:flex-col lg:px-10 lg:py-5 xl:min-h-0 ${
         isSignup ? "border-t border-[#34415e] lg:border-t-0 lg:border-l" : ""
-      }`}
+      } ${active ? "" : "hidden lg:flex"}`}
       data-testid={isSignup ? "screen-signup" : "screen-login"}
     >
+      <input name="next" type="hidden" value={next} />
       <h2
         className={`text-center text-xl font-semibold ${
           active ? "text-[#a56cff]" : "text-white"
@@ -206,13 +216,13 @@ function AuthForm({
       >
         {title}
       </h2>
-      <div className="mt-6 h-px bg-[#303a56]">
+      <div className="mt-5 h-px bg-[#303a56]">
         {active ? (
           <div className="h-[3px] rounded-full bg-gradient-to-r from-[#a85fff] to-[#8557ff] shadow-[0_0_18px_rgba(168,95,255,0.85)]" />
         ) : null}
       </div>
 
-      <div className="mt-8 grid gap-3">
+      <div className="mt-5 grid grid-cols-3 gap-2 sm:mt-6 sm:grid-cols-1 sm:gap-3">
         <SocialButton label="Continue with Google" mark="G" />
         <SocialButton
           icon={<Apple className="size-5 fill-white" />}
@@ -224,7 +234,7 @@ function AuthForm({
         />
       </div>
 
-      <div className="my-8 flex items-center gap-4 text-sm text-[#a4aec4]">
+      <div className="my-5 flex items-center gap-4 text-sm text-[#a4aec4]">
         <span className="h-px flex-1 bg-[#303a56]" />
         or continue with email
         <span className="h-px flex-1 bg-[#303a56]" />
@@ -239,7 +249,7 @@ function AuthForm({
         </p>
       ) : null}
 
-      <div className="grid gap-5">
+      <div className="grid gap-4">
         {isSignup ? (
           <Field
             icon={<UserRound className="size-4" />}
@@ -271,7 +281,7 @@ function AuthForm({
       {isSignup ? <PasswordRules /> : <SignInOptions />}
 
       <Button
-        className="mt-8 h-12 w-full rounded-lg bg-gradient-to-r from-[#725dff] to-[#b145f1] text-base font-medium shadow-[0_0_28px_rgba(134,86,255,0.35)] hover:from-[#816eff] hover:to-[#bf57fb]"
+        className="mt-7 h-12 w-full rounded-lg bg-gradient-to-r from-[#725dff] to-[#b145f1] text-base font-medium shadow-[0_0_28px_rgba(134,86,255,0.35)] hover:from-[#816eff] hover:to-[#bf57fb]"
         data-testid={
           isSignup ? "signup-primary-action" : "login-primary-action"
         }
@@ -284,13 +294,43 @@ function AuthForm({
         {isSignup ? "Already have an account? " : "Don't have an account? "}
         <Link
           className="text-[#ad78ff] underline underline-offset-2"
-          href={isSignup ? "/login" : "/signup"}
+          href={authHref(isSignup ? "/login" : "/signup", next)}
         >
           {isSignup ? "Sign in" : "Sign up"}
         </Link>
       </p>
     </form>
   );
+}
+
+function authHref(path: "/login" | "/signup", next: string) {
+  if (next === "/dashboard") {
+    return path;
+  }
+
+  const params = new URLSearchParams({ next });
+
+  return `${path}?${params.toString()}`;
+}
+
+function safeRedirectPath(value?: string) {
+  if (!value) {
+    return "/dashboard";
+  }
+
+  if (
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.includes("://")
+  ) {
+    return "/dashboard";
+  }
+
+  return value;
+}
+
+function singleParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
 }
 
 function Field({
@@ -316,7 +356,7 @@ function Field({
           {icon}
         </span>
         <Input
-          className="h-12 rounded-lg border-[#34415e] bg-[#111a2e]/80 pr-11 pl-12 text-[15px] placeholder:text-[#7e889f] focus-visible:bg-[#121d34]"
+          className="h-11 rounded-lg border-[#34415e] bg-[#111a2e]/80 pr-11 pl-12 text-[15px] placeholder:text-[#7e889f] focus-visible:bg-[#121d34] sm:h-12"
           name={name}
           placeholder={placeholder}
           required={name !== "fullName"}
@@ -370,7 +410,7 @@ function LogoMark() {
 
 function PasswordRules() {
   return (
-    <div className="mt-5 grid gap-2 text-sm text-[#9fa9bf]">
+    <div className="mt-4 grid gap-1.5 text-xs text-[#9fa9bf] sm:mt-5 sm:gap-2 sm:text-sm">
       <p>Password must contain:</p>
       {["At least 8 characters", "One uppercase letter", "One number"].map(
         (rule) => (
@@ -380,7 +420,7 @@ function PasswordRules() {
           </span>
         ),
       )}
-      <label className="mt-4 flex items-start gap-3 text-sm leading-6">
+      <label className="mt-3 flex items-start gap-3 text-xs leading-5 sm:mt-4 sm:text-sm sm:leading-6">
         <input
           className="mt-1 size-4 rounded border border-[#6d7891] bg-transparent"
           required
@@ -430,11 +470,12 @@ function SocialButton({
 }) {
   return (
     <button
-      className="grid h-12 grid-cols-[1fr_auto_1fr] items-center rounded-lg border border-[#34415e] bg-[#172035]/80 px-5 text-sm text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition hover:bg-[#202a43]"
+      aria-label={label}
+      className="grid h-10 place-items-center rounded-lg border border-[#34415e] bg-[#172035]/80 px-4 text-sm text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition hover:bg-[#202a43] sm:h-12 sm:grid-cols-[1fr_auto_1fr] sm:px-5"
       type="button"
     >
-      <span />
-      <span className="flex items-center gap-4">
+      <span className="hidden sm:block" />
+      <span className="flex items-center justify-center sm:gap-4">
         {mark ? (
           <span className="text-xl font-bold">
             <span className="text-[#4285f4]">G</span>
@@ -442,9 +483,9 @@ function SocialButton({
         ) : (
           icon
         )}
-        {label}
+        <span className="hidden sm:inline">{label}</span>
       </span>
-      <span />
+      <span className="hidden sm:block" />
     </button>
   );
 }

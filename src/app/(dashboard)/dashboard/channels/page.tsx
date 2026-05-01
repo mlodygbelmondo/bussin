@@ -5,9 +5,9 @@ import {
   ChannelLimitFooter,
   ChannelsGrid,
   ChannelsHero,
-  ChannelsToolbar,
   ChannelsTopBar,
 } from "@/modules/channels/channels-components";
+import { ChannelsToolbar } from "@/modules/channels/channels-toolbar";
 import { getChannelsScreenData } from "@/modules/channels/channels.queries";
 
 type ChannelsPageProps = {

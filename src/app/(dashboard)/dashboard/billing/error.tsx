@@ -11,7 +11,7 @@ export default function BillingError({
 }) {
   return (
     <main
-      className="grid min-h-full place-items-center bg-[#050b18] p-7 text-foreground"
+      className="grid min-h-[100dvh] place-items-center bg-[#07101f] p-7 text-foreground"
       data-testid="error-state"
     >
       <section className="bussin-panel max-w-md rounded-lg p-6 text-center">

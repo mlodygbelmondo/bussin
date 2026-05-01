@@ -124,69 +124,6 @@ export function ChannelsHero({ data }: { data: ChannelsScreenData }) {
   );
 }
 
-export function ChannelsToolbar({
-  data,
-  query,
-  status,
-}: {
-  data: ChannelsScreenData;
-  query: string;
-  status: string;
-}) {
-  return (
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-      <div>
-        <h2 className="text-xl font-semibold tracking-tight text-white">
-          Your channels ({data.channels.length} of {data.plan.limit})
-        </h2>
-        <p className="mt-1 text-sm text-slate-400">
-          Manage your YouTube channels and publishing destinations.
-        </p>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_170px_190px] lg:w-[660px]">
-        <form className="contents">
-          <label className="flex h-10 items-center gap-3 rounded-lg border border-white/10 bg-white/[0.04] px-4 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <Search className="size-4 text-slate-500" />
-            <input
-              className="min-w-0 flex-1 bg-transparent text-slate-200 outline-none placeholder:text-slate-500"
-              defaultValue={query}
-              name="q"
-              placeholder="Search channels..."
-            />
-          </label>
-          <label className="relative">
-            <select
-              className="h-10 w-full appearance-none rounded-lg border border-white/10 bg-[#101729] px-4 pr-9 text-sm font-medium text-white outline-none"
-              defaultValue={status}
-              name="status"
-            >
-              <option value="all">All statuses</option>
-              <option value="connected">Connected</option>
-              <option value="disconnected">Disconnected</option>
-              <option value="error">Sync issues</option>
-            </select>
-            <ChevronDown className="pointer-events-none absolute top-3 right-3 size-4 text-slate-400" />
-          </label>
-          <button className="sr-only" type="submit">
-            Apply channel filters
-          </button>
-        </form>
-        <form action={startChannelsYoutubeOAuthAction}>
-          <Button
-            className="h-10 w-full"
-            data-testid="primary-action"
-            disabled={data.hasPlanLimitReached}
-            type="submit"
-          >
-            <CirclePlus className="size-4" />
-            Connect channel
-          </Button>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 export function ChannelsGrid({
   channels,
   planLimitReached,
@@ -199,7 +136,7 @@ export function ChannelsGrid({
   }
 
   return (
-    <div className="mt-5 grid gap-5 lg:grid-cols-2 2xl:grid-cols-3">
+    <div className="mt-5 grid min-w-0 gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr))]">
       {channels.map((channel, index) => (
         <ChannelCard channel={channel} index={index} key={channel.id} />
       ))}
@@ -236,7 +173,7 @@ export function ChannelCard({
 
   return (
     <article
-      className="bussin-panel overflow-hidden rounded-lg"
+      className="bussin-panel min-w-0 overflow-hidden rounded-lg"
       data-testid="channel-card"
     >
       <div className={cn("relative h-[106px]", coverClass(index))}>
@@ -252,14 +189,14 @@ export function ChannelCard({
       </div>
       <div className="relative px-5 pt-6 pb-4">
         <ChannelAvatar channel={channel} index={index} />
-        <div className="ml-[92px] min-h-16">
+        <div className="ml-[92px] min-h-16 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-base font-semibold text-white">
+            <h3 className="min-w-0 text-base font-semibold break-words text-white">
               {channel.title}
             </h3>
             {channel.isDefault ? <Badge>Default</Badge> : null}
           </div>
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 break-words text-xs text-slate-500">
             {channel.handle ?? channel.youtubeChannelId} ·{" "}
             {channel.subscribersLabel}
           </p>
@@ -284,10 +221,10 @@ export function ChannelCard({
             </dd>
           </div>
         </dl>
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
           {channel.isDefault ? (
             <Button
-              className="h-9 flex-1 justify-center px-3 text-violet-200"
+              className="h-9 w-full justify-center px-3 text-violet-200"
               disabled
               type="button"
               variant="outline"
@@ -302,7 +239,7 @@ export function ChannelCard({
               label="Set as default"
             />
           ) : (
-            <form action={startChannelsYoutubeOAuthAction} className="flex-1">
+            <form action={startChannelsYoutubeOAuthAction} className="w-full">
               <Button
                 className="h-9 w-full px-3"
                 type="submit"

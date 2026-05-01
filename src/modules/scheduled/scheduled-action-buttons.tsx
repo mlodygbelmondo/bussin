@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { CalendarClock, Loader2, Send, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
@@ -18,17 +18,26 @@ export function ScheduledUploadActions({
   upload: ScheduledUpload;
 }) {
   const [pendingAction, setPendingAction] = useState<string | null>(null);
-  const [minSchedule] = useState(() =>
-    toDatetimeLocal(new Date(Date.now() + 5 * 60 * 1000).toISOString()),
-  );
+  const [minSchedule, setMinSchedule] = useState("");
   const [scheduledAt, setScheduledAt] = useState(() =>
-    toDatetimeLocal(
-      upload.scheduledAt ??
-        new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    ),
+    toDatetimeLocal(upload.scheduledAt ?? ""),
   );
   const [isPending, startTransition] = useTransition();
   const disabled = isPending || upload.status === "uploaded";
+
+  useEffect(() => {
+    setMinSchedule(
+      toDatetimeLocal(new Date(Date.now() + 5 * 60 * 1000).toISOString()),
+    );
+
+    if (!upload.scheduledAt) {
+      setScheduledAt(
+        toDatetimeLocal(
+          new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        ),
+      );
+    }
+  }, [upload.scheduledAt]);
 
   function runAction(kind: "cancel" | "publish" | "reschedule") {
     startTransition(async () => {

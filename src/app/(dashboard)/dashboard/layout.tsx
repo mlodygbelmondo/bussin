@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import {
   AudioWaveform,
   BarChart3,
+  CalendarDays,
   CloudUpload,
   CreditCard,
   Grid2X2,
@@ -34,7 +35,6 @@ const dashboardLinks = [
   { href: "/dashboard", icon: "overview", label: "Overview" },
   { href: "/dashboard/generate", icon: "generate", label: "Generate" },
   { href: "/dashboard/library", icon: "library", label: "Library" },
-  { href: "/dashboard/scheduled", icon: "uploads", label: "Uploads" },
   { href: "/dashboard/scheduled", icon: "calendar", label: "Calendar" },
   { href: "/dashboard/queue", icon: "analytics", label: "Analytics" },
   { href: "/dashboard/generate", icon: "templates", label: "Templates" },
@@ -53,7 +53,7 @@ const mobileLinks = [
 const mobileIconMap = {
   analytics: BarChart3,
   billing: CreditCard,
-  calendar: CloudUpload,
+  calendar: CalendarDays,
   connections: Link2,
   generate: Sparkles,
   library: Library,
@@ -71,8 +71,8 @@ export default async function DashboardLayout({
   const shell = await getDashboardShellData();
 
   return (
-    <div className="min-h-[100dvh] overflow-x-hidden bg-[#060b18] text-foreground md:grid md:grid-cols-[244px_1fr]">
-      <aside className="hidden border-r border-white/10 bg-[#071021]/92 shadow-[inset_-1px_0_0_rgba(112,86,255,0.1)] md:flex md:min-h-[100dvh] md:flex-col">
+    <div className="min-h-[100dvh] overflow-x-hidden bg-[#060b18] text-foreground">
+      <aside className="hidden border-r border-white/10 bg-[#071021]/92 shadow-[inset_-1px_0_0_rgba(112,86,255,0.1)] md:fixed md:inset-y-0 md:left-0 md:z-30 md:flex md:w-[244px] md:flex-col md:overflow-hidden">
         <Link
           className="flex h-[73px] items-center gap-3 border-b border-white/10 px-7 text-xl font-semibold tracking-tight text-white"
           href="/dashboard"
@@ -82,8 +82,10 @@ export default async function DashboardLayout({
           </span>
           {APP_NAME}
         </Link>
-        <DashboardNav items={dashboardLinks} />
-        <div className="mt-auto space-y-3 px-4 pb-4">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <DashboardNav items={dashboardLinks} />
+        </div>
+        <div className="shrink-0 space-y-3 px-4 pb-4">
           <section className="bussin-panel rounded-lg p-4">
             <div className="flex items-center justify-between gap-3 text-xs">
               <p className="font-semibold text-white">{shell.planName}</p>
@@ -153,7 +155,7 @@ export default async function DashboardLayout({
           );
         })}
       </nav>
-      <div className="min-w-0">{children}</div>
+      <div className="min-w-0 md:ml-[244px]">{children}</div>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { AuthScreen } from "@/app/auth/page";
 export default function SignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string | string[] }>;
 }) {
   return <AuthScreen activePanel="signup" searchParams={searchParams} />;
 }
