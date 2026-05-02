@@ -19,6 +19,7 @@ import {
 import type { ChannelsActionResult } from "@/modules/channels/channels.types";
 
 type WorkspaceContext = {
+  role: string | null;
   supabase: Awaited<ReturnType<typeof createClient>>;
   userId: string;
   workspaceId: string;
@@ -164,7 +165,12 @@ export async function syncYoutubeChannelsAction(
     return { message: "Missing YouTube connection.", ok: false };
   }
 
-  const { supabase, userId, workspaceId } = await requireWorkspace();
+  const { role, supabase, userId, workspaceId } = await requireWorkspace();
+
+  if (!canManageIntegrations(role)) {
+    return { message: "Workspace admin access required.", ok: false };
+  }
+
   const admin = createAdminClient();
   const { data: connection, error } = await admin
     .from("youtube_connections")
@@ -248,7 +254,12 @@ export async function testSunoConnectionAction(): Promise<ChannelsActionResult> 
     return { message: "Mock Suno connection looks healthy.", ok: true };
   }
 
-  const { workspaceId } = await requireWorkspace();
+  const { role, workspaceId } = await requireWorkspace();
+
+  if (!canManageIntegrations(role)) {
+    return { message: "Workspace admin access required.", ok: false };
+  }
+
   const admin = createAdminClient();
   const { data: connection, error } = await admin
     .from("suno_connections")
@@ -321,7 +332,7 @@ async function requireWorkspace(): Promise<WorkspaceContext> {
 
   const { data, error } = await supabase
     .from("workspace_members")
-    .select("workspace_id")
+    .select("role, workspace_id")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
@@ -334,7 +345,16 @@ async function requireWorkspace(): Promise<WorkspaceContext> {
     redirect("/onboarding");
   }
 
-  return { supabase, userId: user.id, workspaceId: String(data.workspace_id) };
+  return {
+    role: data.role,
+    supabase,
+    userId: user.id,
+    workspaceId: String(data.workspace_id),
+  };
+}
+
+function canManageIntegrations(role: string | null | undefined) {
+  return role === "owner" || role === "admin";
 }
 
 function createYoutubeRepository(

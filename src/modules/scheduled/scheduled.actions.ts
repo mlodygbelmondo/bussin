@@ -7,6 +7,7 @@ import { isMockMode } from "@/lib/app-config";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/database.types";
 import type { ScheduledActionResult } from "@/modules/scheduled/scheduled.types";
+import { enqueueWorkerQueueJob } from "@/server/services/worker-queue.service";
 import {
   cancelScheduledUpload,
   normalizeFutureSchedule,
@@ -17,14 +18,6 @@ import {
 
 type Supabase = SupabaseClient<Database>;
 type QueueRpcClient = Supabase & {
-  rpc(
-    fn: "worker_queue_send",
-    args: {
-      delay_seconds: number;
-      message: Record<string, string>;
-      queue_name: "youtube-upload-jobs";
-    },
-  ): Promise<{ data: unknown; error: { message: string } | null }>;
   rpc(
     fn: "publish_youtube_upload_now",
     args: {
@@ -173,18 +166,10 @@ function createScheduledRepository(
       }
     },
     async enqueueYoutubeUploadJob(input) {
-      const { error } = await (supabase as QueueRpcClient).rpc(
-        "worker_queue_send",
-        {
-          delay_seconds: 0,
-          message: input,
-          queue_name: "youtube-upload-jobs",
-        },
-      );
-
-      if (error) {
-        throw new Error(error.message);
-      }
+      await enqueueWorkerQueueJob({
+        message: input,
+        queueName: "youtube-upload-jobs",
+      });
     },
     async publishUploadNow(input) {
       const { data, error } = await (supabase as QueueRpcClient).rpc(

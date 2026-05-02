@@ -1,13 +1,11 @@
 import Link from "next/link";
 import {
-  Bell,
   CalendarDays,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
   ExternalLink,
-  Megaphone,
   MoreVertical,
   PlaySquare,
   Plus,
@@ -15,6 +13,7 @@ import {
   Send,
   Settings,
 } from "lucide-react";
+import { DashboardTopBar } from "@/components/common/dashboard-top-bar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ScheduledUploadActions } from "@/modules/scheduled/scheduled-action-buttons";
@@ -44,40 +43,7 @@ const timeRows = [
 ];
 
 export function ScheduledTopBar() {
-  return (
-    <header className="flex h-[73px] items-center justify-end gap-4 border-b border-white/10 bg-[#0b1022]/80 px-4 backdrop-blur lg:px-9">
-      <Link
-        className="hidden h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] md:flex"
-        href="/dashboard/channels"
-      >
-        <Megaphone className="size-4 text-slate-300" />
-        What&apos;s new
-        <span className="size-1.5 rounded-full bg-violet-400" />
-      </Link>
-      <label className="hidden h-9 w-full max-w-[335px] items-center gap-3 rounded-lg border border-white/10 bg-white/[0.04] px-4 text-sm text-slate-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] md:flex">
-        <Search className="size-4 text-slate-500" />
-        <span className="flex-1">Search anything...</span>
-        <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[11px] text-slate-400">
-          ⌘ /
-        </kbd>
-      </label>
-      <Button
-        aria-label="Notifications"
-        className="text-slate-300"
-        size="icon"
-        type="button"
-        variant="ghost"
-      >
-        <Bell className="size-5" />
-      </Button>
-      <button className="flex items-center gap-2 text-sm text-slate-300">
-        <span className="grid size-9 place-items-center rounded-full bg-gradient-to-br from-violet-400 to-violet-700 font-semibold text-white">
-          AM
-        </span>
-        <ChevronDown className="size-4" />
-      </button>
-    </header>
-  );
+  return <DashboardTopBar />;
 }
 
 export function ScheduledHeader() {

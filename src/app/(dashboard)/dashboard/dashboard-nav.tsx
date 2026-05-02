@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
@@ -67,10 +67,28 @@ export function DashboardNav({ items }: { items: DashboardNavItem[] }) {
             key={item.label}
           >
             <Icon className="size-5" />
-            {item.label}
+            <span className="min-w-0 flex-1 truncate">{item.label}</span>
+            <DashboardNavPendingIndicator />
           </Link>
         );
       })}
     </nav>
   );
+}
+
+export function DashboardNavPendingIndicator({
+  className,
+}: {
+  className?: string;
+}) {
+  const { pending } = useLinkStatus();
+  const classes = [
+    "size-1.5 shrink-0 rounded-full bg-violet-200 opacity-0 transition-opacity duration-150",
+    pending ? "animate-pulse opacity-100" : "",
+    className ?? "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return <span aria-hidden className={classes} data-pending={pending} />;
 }

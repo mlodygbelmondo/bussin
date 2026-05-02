@@ -71,6 +71,17 @@ describe("Suno integration adapter", () => {
       title: "Focus Loop",
     });
   });
+
+  it("blocks private network Suno API targets before real requests", async () => {
+    const adapter = createSunoAdapter({
+      apiUrl: "https://127.0.0.1",
+      credential: "test-token",
+    });
+
+    await expect(adapter.getLimits()).rejects.toMatchObject({
+      code: "unsafe_url",
+    });
+  });
 });
 
 describe("YouTube integration adapter", () => {

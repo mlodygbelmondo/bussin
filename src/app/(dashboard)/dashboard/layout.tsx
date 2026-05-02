@@ -15,7 +15,10 @@ import {
   Settings,
   Sparkles,
 } from "lucide-react";
-import { DashboardNav } from "@/app/(dashboard)/dashboard/dashboard-nav";
+import {
+  DashboardNav,
+  DashboardNavPendingIndicator,
+} from "@/app/(dashboard)/dashboard/dashboard-nav";
 import { APP_NAME, isMockMode } from "@/lib/app-config";
 import { createClient } from "@/lib/supabase/server";
 import { mockDashboardShell } from "@/modules/dev/mock-data";
@@ -150,7 +153,10 @@ export default async function DashboardLayout({
               key={item.label}
             >
               <Icon className="size-4" />
-              {item.label}
+              <span className="flex items-center gap-1">
+                {item.label}
+                <DashboardNavPendingIndicator />
+              </span>
             </Link>
           );
         })}

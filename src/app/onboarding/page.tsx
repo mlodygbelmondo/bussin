@@ -305,7 +305,7 @@ function SunoCard({
             <Input name="label" placeholder="Suno account label" />
             <Input
               name="api_url"
-              placeholder="https://api.suno.example"
+              placeholder="https://api.sunoapi.org"
               required
               type="url"
             />

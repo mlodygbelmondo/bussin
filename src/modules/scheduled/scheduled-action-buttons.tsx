@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { CalendarClock, Loader2, Send, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
@@ -18,26 +18,19 @@ export function ScheduledUploadActions({
   upload: ScheduledUpload;
 }) {
   const [pendingAction, setPendingAction] = useState<string | null>(null);
-  const [minSchedule, setMinSchedule] = useState("");
-  const [scheduledAt, setScheduledAt] = useState(() =>
-    toDatetimeLocal(upload.scheduledAt ?? ""),
+  const [minSchedule] = useState(() =>
+    toDatetimeLocal(new Date(Date.now() + 5 * 60 * 1000).toISOString()),
   );
+  const [scheduledDraft, setScheduledDraft] = useState(() => ({
+    uploadId: upload.uploadId,
+    value: toInitialScheduleValue(upload.scheduledAt),
+  }));
   const [isPending, startTransition] = useTransition();
   const disabled = isPending || upload.status === "uploaded";
-
-  useEffect(() => {
-    setMinSchedule(
-      toDatetimeLocal(new Date(Date.now() + 5 * 60 * 1000).toISOString()),
-    );
-
-    if (!upload.scheduledAt) {
-      setScheduledAt(
-        toDatetimeLocal(
-          new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        ),
-      );
-    }
-  }, [upload.scheduledAt]);
+  const scheduledAt =
+    scheduledDraft.uploadId === upload.uploadId
+      ? scheduledDraft.value
+      : toInitialScheduleValue(upload.scheduledAt);
 
   function runAction(kind: "cancel" | "publish" | "reschedule") {
     startTransition(async () => {
@@ -76,7 +69,12 @@ export function ScheduledUploadActions({
           data-testid="reschedule-datetime"
           disabled={disabled || upload.status === "cancelled"}
           min={minSchedule}
-          onChange={(event) => setScheduledAt(event.currentTarget.value)}
+          onChange={(event) =>
+            setScheduledDraft({
+              uploadId: upload.uploadId,
+              value: event.currentTarget.value,
+            })
+          }
           type="datetime-local"
           value={scheduledAt}
         />
@@ -147,4 +145,11 @@ function toDatetimeLocal(value: string) {
   const local = new Date(date.getTime() - offset * 60 * 1000);
 
   return local.toISOString().slice(0, 16);
+}
+
+function toInitialScheduleValue(value: string | null) {
+  return (
+    toDatetimeLocal(value ?? "") ||
+    toDatetimeLocal(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString())
+  );
 }

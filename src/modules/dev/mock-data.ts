@@ -668,9 +668,14 @@ export const mockOnboardingData: OnboardingData = {
   ],
 };
 
-export function getMockTrackPreviewData(trackId: string): TrackPreviewData {
-  const track =
-    mockTracks.find((item) => item.trackId === trackId) ?? mockTracks[0];
+export function getMockTrackPreviewData(
+  trackId: string,
+): TrackPreviewData | null {
+  const track = mockTracks.find((item) => item.trackId === trackId);
+
+  if (!track) {
+    return null;
+  }
 
   return {
     audioUrl: null,

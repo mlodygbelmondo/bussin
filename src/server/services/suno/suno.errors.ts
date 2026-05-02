@@ -57,6 +57,14 @@ export function normalizeSunoError(error: unknown): SunoIntegrationError {
     );
   }
 
+  if (normalizedMessage.includes("unsafe suno api url")) {
+    return new SunoIntegrationError(
+      "unsafe_url",
+      "Suno API URL is not allowed.",
+      error,
+    );
+  }
+
   if (
     error instanceof TypeError ||
     normalizedMessage.includes("fetch failed")

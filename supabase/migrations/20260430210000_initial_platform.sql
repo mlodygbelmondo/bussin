@@ -1201,6 +1201,8 @@ using (
 grant usage on schema public to anon, authenticated, service_role;
 grant select on all tables in schema public to anon;
 grant select, insert, update, delete on all tables in schema public to authenticated;
+revoke execute on all functions in schema public from public;
+revoke execute on all functions in schema public from anon, authenticated;
 revoke select on public.suno_connections, public.youtube_connections from anon, authenticated;
 grant select (
   id,
@@ -1230,4 +1232,8 @@ grant select (
 on public.youtube_connections
 to authenticated;
 grant all on all tables in schema public to service_role;
-grant execute on all functions in schema public to authenticated, service_role;
+grant execute on all functions in schema public to service_role;
+grant execute on function public.is_workspace_member(uuid) to authenticated;
+grant execute on function public.workspace_role_for_current_user(uuid) to authenticated;
+grant execute on function public.can_manage_workspace(uuid) to authenticated;
+grant execute on function public.storage_workspace_id(text) to authenticated;

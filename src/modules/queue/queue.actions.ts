@@ -7,6 +7,7 @@ import type { Database } from "@/lib/database.types";
 import { isMockMode } from "@/lib/app-config";
 import { createClient } from "@/lib/supabase/server";
 import type { QueueActionResult } from "@/modules/queue/queue.types";
+import { enqueueWorkerQueueJob } from "@/server/services/worker-queue.service";
 
 const TARGETS = [
   "generation_request",
@@ -18,16 +19,6 @@ const TARGETS = [
 type Target = (typeof TARGETS)[number];
 type QueueName = "generation-jobs" | "render-jobs" | "youtube-upload-jobs";
 type Supabase = SupabaseClient<Database>;
-type QueueRpcClient = Supabase & {
-  rpc(
-    fn: "worker_queue_send",
-    args: {
-      delay_seconds: number;
-      message: Record<string, string>;
-      queue_name: QueueName;
-    },
-  ): Promise<{ data: unknown; error: { message: string } | null }>;
-};
 
 export async function retryFailedQueueItem(
   formData: FormData,
@@ -370,22 +361,11 @@ async function retryUpload(input: {
 }
 
 async function enqueueWorkerJob(
-  supabase: Supabase,
+  _supabase: Supabase,
   queueName: QueueName,
   message: Record<string, string>,
 ) {
-  const { error } = await (supabase as QueueRpcClient).rpc(
-    "worker_queue_send",
-    {
-      delay_seconds: 0,
-      message,
-      queue_name: queueName,
-    },
-  );
-
-  if (error) {
-    throw new Error(error.message);
-  }
+  await enqueueWorkerQueueJob({ message, queueName });
 }
 
 async function updateOrThrow(

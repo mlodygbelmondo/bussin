@@ -1,3 +1,5 @@
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import { z } from "zod";
 import {
   normalizeSunoError,
@@ -36,6 +38,7 @@ export function createSunoAdapter(input: {
   const fetchImpl = input.fetch ?? fetch;
   const model = input.model ?? "V4_5";
   const timeoutMs = input.timeoutMs ?? 30_000;
+  const validateNetwork = !input.fetch;
 
   return {
     async createCustomGeneration(rawInput) {
@@ -59,6 +62,7 @@ export function createSunoAdapter(input: {
         method: "POST",
         path: "/api/v1/generate",
         timeoutMs,
+        validateNetwork,
       });
       const sunoTrackId =
         body.data?.taskId ?? body.data?.id ?? body.taskId ?? body.id;
@@ -81,6 +85,7 @@ export function createSunoAdapter(input: {
         method: "GET",
         path: "/api/v1/generate/credit",
         timeoutMs,
+        validateNetwork,
       });
       const creditsData = body.data;
       const credits =
@@ -121,6 +126,7 @@ export function createSunoAdapter(input: {
         method: "GET",
         path: `/api/v1/generate/record-info?${params.toString()}`,
         timeoutMs,
+        validateNetwork,
       });
 
       return parseTrackStatus(body, sunoTrackId);
@@ -190,20 +196,23 @@ async function requestJson<T>(input: {
   method: "GET" | "POST";
   path: string;
   timeoutMs: number;
+  validateNetwork: boolean;
 }): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), input.timeoutMs);
+  const requestUrl = new URL(input.path, input.baseUrl);
 
   try {
-    const response = await input.fetchImpl(
-      new URL(input.path, input.baseUrl).toString(),
-      {
-        body: input.body ? JSON.stringify(input.body) : undefined,
-        headers: buildHeaders(input.credential, Boolean(input.body)),
-        method: input.method,
-        signal: controller.signal,
-      },
-    );
+    if (input.validateNetwork) {
+      await assertSafeOutboundUrl(requestUrl);
+    }
+
+    const response = await input.fetchImpl(requestUrl.toString(), {
+      body: input.body ? JSON.stringify(input.body) : undefined,
+      headers: buildHeaders(input.credential, Boolean(input.body)),
+      method: input.method,
+      signal: controller.signal,
+    });
     const body = (await response.json().catch(() => null)) as
       | (T & { code?: number; msg?: string })
       | null;
@@ -241,6 +250,75 @@ async function requestJson<T>(input: {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function assertSafeOutboundUrl(url: URL) {
+  if (url.protocol !== "https:" || url.username || url.password) {
+    throw new SunoIntegrationError(
+      "unsafe_url",
+      "Unsafe Suno API URL was blocked.",
+    );
+  }
+
+  const literalIpVersion = isIP(url.hostname);
+
+  if (literalIpVersion && isPrivateAddress(url.hostname)) {
+    throw new SunoIntegrationError(
+      "unsafe_url",
+      "Unsafe Suno API URL resolved to a private address.",
+    );
+  }
+
+  const addresses = await lookup(url.hostname, { all: true, verbatim: true });
+
+  if (
+    addresses.length === 0 ||
+    addresses.some((entry) => isPrivateAddress(entry.address))
+  ) {
+    throw new SunoIntegrationError(
+      "unsafe_url",
+      "Unsafe Suno API URL resolved to a private address.",
+    );
+  }
+}
+
+function isPrivateAddress(address: string) {
+  const version = isIP(address);
+
+  if (version === 4) {
+    const parts = address.split(".").map((part) => Number(part));
+    const [first, second] = parts;
+
+    return (
+      first === 0 ||
+      first === 10 ||
+      first === 127 ||
+      first >= 224 ||
+      (first === 100 && second >= 64 && second <= 127) ||
+      (first === 169 && second === 254) ||
+      (first === 172 && second >= 16 && second <= 31) ||
+      (first === 192 && second === 168) ||
+      (first === 198 && (second === 18 || second === 19))
+    );
+  }
+
+  if (version === 6) {
+    const normalized = address.toLowerCase();
+
+    return (
+      normalized === "::" ||
+      normalized === "::1" ||
+      normalized.startsWith("fc") ||
+      normalized.startsWith("fd") ||
+      normalized.startsWith("fe80:") ||
+      normalized.startsWith("::ffff:10.") ||
+      normalized.startsWith("::ffff:127.") ||
+      normalized.startsWith("::ffff:169.254.") ||
+      normalized.startsWith("::ffff:192.168.")
+    );
+  }
+
+  return true;
 }
 
 function buildHeaders(credential: string, hasBody: boolean) {

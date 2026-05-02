@@ -59,7 +59,7 @@ describe("backend validators", () => {
       createSunoConnectionSchema.parse({
         label: "Main Suno",
         cookie: "session=abc",
-        api_url: "https://api.suno.example",
+        api_url: "https://api.sunoapi.org",
       }),
     ).toMatchObject({ label: "Main Suno" });
 
@@ -78,5 +78,21 @@ describe("backend validators", () => {
         plan: "creator",
       }),
     ).toMatchObject({ plan: "creator" });
+  });
+
+  it("rejects unsafe Suno connection URLs", () => {
+    expect(() =>
+      createSunoConnectionSchema.parse({
+        cookie: "session=abc",
+        api_url: "http://api.sunoapi.org",
+      }),
+    ).toThrow(/https/i);
+
+    expect(() =>
+      createSunoConnectionSchema.parse({
+        cookie: "session=abc",
+        api_url: "https://127.0.0.1",
+      }),
+    ).toThrow(/host/i);
   });
 });

@@ -4,6 +4,9 @@ export default defineConfig({
   testDir: "./tests/e2e",
   webServer: {
     command: "pnpm dev",
+    env: {
+      NEXT_PUBLIC_APP_MODE: "mock",
+    },
     url: "http://localhost:3000",
     reuseExistingServer: true,
   },

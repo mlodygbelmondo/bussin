@@ -4,6 +4,16 @@ import { BillingSettingsForm } from "@/modules/billing/billing-settings-form";
 import { BillingSettingsScreen } from "@/modules/billing/billing-settings-screen";
 import type { BillingPageData } from "@/modules/billing/billing.types";
 
+const router = vi.hoisted(() => ({
+  prefetch: vi.fn(),
+  push: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/dashboard/billing",
+  useRouter: () => router,
+}));
+
 vi.mock("@/modules/billing/billing.actions", () => ({
   openCustomerPortalAction: vi.fn(),
   startCheckoutAction: vi.fn(),

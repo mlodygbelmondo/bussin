@@ -42,7 +42,7 @@ describe("Suno connection flow", () => {
 
     const result = await actions.saveConnection({
       input: {
-        api_url: "https://api.suno.example",
+        api_url: "https://api.sunoapi.org",
         cookie: "suno-secret-cookie",
         label: "Primary Suno",
       },
@@ -53,14 +53,14 @@ describe("Suno connection flow", () => {
     expect(result.status).toBe("connected");
     expect(repository.createConnection).toHaveBeenCalledWith(
       expect.objectContaining({
-        encrypted_api_url: expect.not.stringContaining("api.suno.example"),
+        encrypted_api_url: expect.not.stringContaining("api.sunoapi.org"),
         encrypted_cookie: expect.not.stringContaining("suno-secret-cookie"),
         workspace_id: workspaceId,
       }),
     );
     const saved = vi.mocked(repository.createConnection).mock.calls[0][0];
     expect(secrets.decrypt(saved.encrypted_api_url)).toBe(
-      "https://api.suno.example",
+      "https://api.sunoapi.org",
     );
     expect(secrets.decrypt(saved.encrypted_cookie)).toBe("suno-secret-cookie");
     expect(repository.updateConnection).toHaveBeenCalledWith(
@@ -93,7 +93,7 @@ describe("Suno connection flow", () => {
 
     const result = await actions.saveConnection({
       input: {
-        api_url: "https://api.suno.example",
+        api_url: "https://api.sunoapi.org",
         cookie: "expired-cookie",
       },
       userId,

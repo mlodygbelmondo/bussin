@@ -13,6 +13,7 @@ const serverSchema = {
   STRIPE_SECRET_KEY: z.string().min(1),
   STRIPE_STUDIO_PRICE_ID: z.string().min(1).optional(),
   STRIPE_WEBHOOK_SECRET: z.string().min(1),
+  SUNO_ALLOWED_API_HOSTS: z.string().min(1).optional(),
   SUNO_API_KEY: z.string().min(1).optional(),
   SUNO_DEFAULT_API_BASE_URL: z.string().url(),
   SUPABASE_DB_URL: z.string().min(1).optional(),
@@ -61,6 +62,7 @@ const mockDefaults = {
   SECRETS_ENCRYPTION_KEY: "mock-secrets-encryption-key",
   STRIPE_SECRET_KEY: "sk_test_mock",
   STRIPE_WEBHOOK_SECRET: "whsec_mock",
+  SUNO_ALLOWED_API_HOSTS: "api.sunoapi.org",
   SUNO_DEFAULT_API_BASE_URL: "https://api.example.test",
   SUPABASE_SERVICE_ROLE_KEY: "mock-supabase-service-role-key",
 } satisfies Partial<EnvInput>;

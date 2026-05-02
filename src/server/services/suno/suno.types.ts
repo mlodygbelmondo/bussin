@@ -5,6 +5,7 @@ export type SunoErrorCode =
   | "quota_exceeded"
   | "invalid_response"
   | "generation_failed"
+  | "unsafe_url"
   | "timeout"
   | "unknown";
 

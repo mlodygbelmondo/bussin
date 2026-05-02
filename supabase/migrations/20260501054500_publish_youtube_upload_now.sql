@@ -28,12 +28,7 @@ begin
       and youtube_uploads.track_id is not null
       and youtube_uploads.video_render_id is not null
       and auth.uid() = acting_user_id
-      and exists (
-        select 1
-        from public.workspace_members
-        where workspace_members.workspace_id = target_workspace_id
-          and workspace_members.user_id = acting_user_id
-      )
+      and public.can_manage_workspace(target_workspace_id)
     for update
   ),
   updated_upload as (

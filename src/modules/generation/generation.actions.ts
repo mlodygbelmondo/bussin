@@ -15,6 +15,7 @@ import {
   createGenerationRequestService,
   type GenerationRequestRepository,
 } from "@/server/services/generation-request.service";
+import { enqueueWorkerQueueJob } from "@/server/services/worker-queue.service";
 import {
   createUsageService,
   type UsageRepository,
@@ -27,16 +28,6 @@ const IMAGE_BUCKET = "image-assets";
 const MAX_IMAGE_SIZE = 6 * 1024 * 1024;
 
 type Supabase = SupabaseClient<Database>;
-type WorkerQueueRpcClient = Supabase & {
-  rpc(
-    fn: "worker_queue_send",
-    args: {
-      delay_seconds: number;
-      message: Record<string, string>;
-      queue_name: "generation-jobs";
-    },
-  ): Promise<{ data: unknown; error: { message: string } | null }>;
-};
 
 export async function createGenerationAction(
   formData: FormData,
@@ -86,18 +77,10 @@ export async function createGenerationAction(
     const service = createGenerationRequestService({
       queue: {
         async enqueueGenerationJob(input) {
-          const { error } = await (supabase as WorkerQueueRpcClient).rpc(
-            "worker_queue_send",
-            {
-              delay_seconds: 0,
-              message: input,
-              queue_name: "generation-jobs",
-            },
-          );
-
-          if (error) {
-            throw new Error(error.message);
-          }
+          await enqueueWorkerQueueJob({
+            message: input,
+            queueName: "generation-jobs",
+          });
         },
       },
       repository: createGenerationRepository(supabase),

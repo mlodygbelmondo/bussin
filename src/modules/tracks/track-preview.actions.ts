@@ -10,19 +10,10 @@ import {
   createTrackService,
   type TrackRepository,
 } from "@/server/services/track.service";
+import { enqueueWorkerQueueJob } from "@/server/services/worker-queue.service";
 import type { TrackActionResult } from "@/modules/tracks/track-preview.types";
 
 type Supabase = SupabaseClient<Database>;
-type QueueRpcClient = Supabase & {
-  rpc(
-    fn: "worker_queue_send",
-    args: {
-      delay_seconds: number;
-      message: Record<string, string>;
-      queue_name: "render-jobs" | "youtube-upload-jobs";
-    },
-  ): Promise<{ data: unknown; error: { message: string } | null }>;
-};
 type ExistingYoutubeUpload = Pick<
   Database["public"]["Tables"]["youtube_uploads"]["Row"],
   "id" | "status"
@@ -426,25 +417,14 @@ async function loadDefaultChannel(supabase: Supabase, workspaceId: string) {
 }
 
 async function enqueueRender(
-  supabase: Supabase,
+  _supabase: Supabase,
   message: { trackId: string; videoRenderId: string; workspaceId: string },
 ) {
-  const { error } = await (supabase as QueueRpcClient).rpc(
-    "worker_queue_send",
-    {
-      delay_seconds: 0,
-      message,
-      queue_name: "render-jobs",
-    },
-  );
-
-  if (error) {
-    throw new Error(error.message);
-  }
+  await enqueueWorkerQueueJob({ message, queueName: "render-jobs" });
 }
 
 async function enqueueYoutubeUpload(
-  supabase: Supabase,
+  _supabase: Supabase,
   message: {
     trackId: string;
     videoRenderId: string;
@@ -452,18 +432,7 @@ async function enqueueYoutubeUpload(
     youtubeUploadId: string;
   },
 ) {
-  const { error } = await (supabase as QueueRpcClient).rpc(
-    "worker_queue_send",
-    {
-      delay_seconds: 0,
-      message,
-      queue_name: "youtube-upload-jobs",
-    },
-  );
-
-  if (error) {
-    throw new Error(error.message);
-  }
+  await enqueueWorkerQueueJob({ message, queueName: "youtube-upload-jobs" });
 }
 
 async function requireWorkspace() {

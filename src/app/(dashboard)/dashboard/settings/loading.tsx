@@ -1,10 +1,13 @@
+import { DashboardTopBar } from "@/components/common/dashboard-top-bar";
+
 export default function SettingsLoading() {
   return (
     <main
-      className="min-h-[100dvh] bg-[#07101f] p-4 text-foreground lg:p-9"
+      className="min-h-[100dvh] bg-[#07101f] text-foreground"
       data-testid="loading-state"
     >
-      <div className="mx-auto grid max-w-[1536px] gap-5">
+      <DashboardTopBar />
+      <div className="mx-auto grid max-w-[1536px] gap-5 px-4 py-4 lg:px-9">
         <div className="grid gap-3">
           <div className="h-9 w-64 animate-pulse rounded bg-white/10" />
           <div className="h-5 w-full max-w-2xl animate-pulse rounded bg-white/10" />

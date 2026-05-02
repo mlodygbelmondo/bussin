@@ -98,4 +98,49 @@ describe("Supabase migration policies", () => {
       /select cron\.schedule\(\s+'cleanup-temp-assets'/,
     );
   });
+
+  it("does not grant worker queue RPC execution to application users", async () => {
+    const migration = await readFile(migrationPath, "utf8");
+
+    expect(migration).toContain(
+      "revoke execute on all functions in schema public from public;",
+    );
+    expect(migration).toContain(
+      "revoke execute on all functions in schema public from anon, authenticated;",
+    );
+    expect(migration).not.toMatch(
+      /grant execute on all functions in schema public to authenticated/,
+    );
+
+    for (const functionName of [
+      "worker_queue_send",
+      "worker_queue_read",
+      "worker_queue_ack",
+      "worker_queue_retry",
+    ]) {
+      expect(migration).not.toMatch(
+        new RegExp(
+          `grant execute on function public\\.${functionName}[^;]+to authenticated`,
+          "i",
+        ),
+      );
+    }
+  });
+
+  it("requires workspace manager access for publish-now RPC updates", async () => {
+    const migration = await readFile(
+      join(
+        process.cwd(),
+        "supabase/migrations/20260501054500_publish_youtube_upload_now.sql",
+      ),
+      "utf8",
+    );
+
+    expect(migration).toMatch(
+      /and public\.can_manage_workspace\(target_workspace_id\)/,
+    );
+    expect(migration).not.toMatch(
+      /from public\.workspace_members\s+where workspace_members\.workspace_id = target_workspace_id\s+and workspace_members\.user_id = acting_user_id/,
+    );
+  });
 });
