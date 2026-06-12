@@ -34,7 +34,7 @@ scheduled, failed (shows `failure_reason` + Retry), and discarded branches.
 
 Actions per state:
 
-- preview_ready: **Publish now** (split button ▾ → _Schedule for…_),
+- preview*ready: **Publish now** (split button ▾ → \_Schedule for…*),
   Edit details (collapsed title/description/tags form), Discard.
 - scheduled: Publish early, Cancel schedule, scheduled time shown.
 - published: Watch on YouTube link.
