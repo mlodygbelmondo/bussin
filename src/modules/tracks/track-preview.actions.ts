@@ -45,7 +45,7 @@ export async function approveTrackAction(
     return actionError(error, "Could not approve this track.");
   }
 
-  revalidateTrack(trackId);
+  revalidateTrack();
 
   return { message: "Track approved. Render queued.", ok: true };
 }
@@ -70,7 +70,7 @@ export async function rejectTrackAction(
     return actionError(error, "Could not reject this track.");
   }
 
-  revalidateTrack(trackId);
+  revalidateTrack();
 
   return { message: "Track rejected. Uploads are blocked.", ok: true };
 }
@@ -139,7 +139,7 @@ export async function publishTrackNowAction(
     return actionError(error, "Could not queue publishing.");
   }
 
-  revalidateTrack(trackId);
+  revalidateTrack();
 
   return { message: "Publishing job queued.", ok: true };
 }
@@ -216,7 +216,7 @@ export async function scheduleTrackAction(
     return actionError(error, "Could not schedule this track.");
   }
 
-  revalidateTrack(trackId);
+  revalidateTrack();
 
   return { message: "Upload scheduled.", ok: true };
 }
@@ -544,7 +544,7 @@ function readTrackId(formData: FormData) {
   return trackId;
 }
 
-function revalidateTrack(_trackId: string) {
+function revalidateTrack() {
   revalidatePath("/dashboard");
 }
 

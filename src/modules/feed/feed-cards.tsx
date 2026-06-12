@@ -467,7 +467,6 @@ function ScheduleDialog({
         <Input
           aria-label="Schedule time"
           data-testid="schedule-input"
-          min={toDatetimeLocal(new Date(Date.now() + 5 * 60 * 1000))}
           onChange={(event) => setScheduledAt(event.target.value)}
           type="datetime-local"
           value={scheduledAt}
@@ -620,10 +619,4 @@ function formatDateTime(iso: string): string {
     minute: "2-digit",
     month: "short",
   }).format(new Date(iso));
-}
-
-function toDatetimeLocal(date: Date): string {
-  const offset = date.getTimezoneOffset() * 60 * 1000;
-
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }

@@ -321,7 +321,7 @@ async function buildFeedTrack(input: {
   userId: string;
   workspaceId: string;
 }): Promise<FeedTrack> {
-  const { image, render, track, upload } = input;
+  const { render, track, upload } = input;
   const status = deriveTrackStatus({ render, track, upload });
   const [audioUrl, coverUrl] = await Promise.all([
     status === "generating" || status === "discarded"
