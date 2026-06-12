@@ -21,8 +21,110 @@ import type {
   ScheduledUpload,
 } from "@/modules/scheduled/scheduled.types";
 import type { TrackPreviewData } from "@/modules/tracks/track-preview.types";
+import type { FeedData } from "@/modules/feed/feed.types";
 
 const now = Date.now();
+
+export const mockFeedData: FeedData = {
+  connections: {
+    channelTitle: "Bussin Beats",
+    sunoConnected: true,
+    youtubeConnected: true,
+  },
+  groups: [
+    {
+      createdAt: new Date(now - 4 * 60 * 1000).toISOString(),
+      failureReason: null,
+      id: "feed-group-1",
+      prompt: "Chill lofi beats with vinyl crackle for late-night studying",
+      status: "running",
+      trackCount: 2,
+      tracks: [
+        {
+          audioUrl: null,
+          coverUrl: null,
+          description: "Laid-back lofi instrumental with dusty drums.",
+          durationSeconds: 180,
+          failureReason: null,
+          id: "feed-track-1",
+          retryTarget: null,
+          scheduledAt: null,
+          status: "preview_ready",
+          tags: ["lofi", "instrumental", "bussin"],
+          title: "Midnight Rain",
+          uploadId: null,
+          youtubeVideoId: null,
+        },
+        {
+          audioUrl: null,
+          coverUrl: null,
+          description: null,
+          durationSeconds: null,
+          failureReason: null,
+          id: "feed-track-2",
+          retryTarget: null,
+          scheduledAt: null,
+          status: "generating",
+          tags: [],
+          title: "Untitled track",
+          uploadId: null,
+          youtubeVideoId: null,
+        },
+      ],
+    },
+    {
+      createdAt: new Date(now - 26 * 60 * 60 * 1000).toISOString(),
+      failureReason: null,
+      id: "feed-group-2",
+      prompt: "Dreamy synthwave for a neon city drive",
+      status: "completed",
+      trackCount: 2,
+      tracks: [
+        {
+          audioUrl: null,
+          coverUrl: null,
+          description: "Retro synthwave cruiser.",
+          durationSeconds: 204,
+          failureReason: null,
+          id: "feed-track-3",
+          retryTarget: null,
+          scheduledAt: new Date(now + 20 * 60 * 60 * 1000).toISOString(),
+          status: "scheduled",
+          tags: ["synthwave", "instrumental"],
+          title: "Neon Drift",
+          uploadId: "feed-upload-1",
+          youtubeVideoId: null,
+        },
+        {
+          audioUrl: null,
+          coverUrl: null,
+          description: "Uptempo synthwave closer.",
+          durationSeconds: 198,
+          failureReason: null,
+          id: "feed-track-4",
+          retryTarget: null,
+          scheduledAt: null,
+          status: "published",
+          tags: ["synthwave", "instrumental"],
+          title: "Chrome Sunset",
+          uploadId: "feed-upload-2",
+          youtubeVideoId: "dQw4w9WgXcQ",
+        },
+      ],
+    },
+  ],
+  hasActiveWork: true,
+  usage: {
+    limit: 10,
+    plan: "trial",
+    used: 4,
+  },
+  user: {
+    displayName: mockUser.name,
+    email: mockUser.email,
+    initials: "AM",
+  },
+};
 const proLimits = {
   monthlyGenerationRequests: 500,
   monthlyUploads: 500,

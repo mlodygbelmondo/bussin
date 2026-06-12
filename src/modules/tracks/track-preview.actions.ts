@@ -167,25 +167,15 @@ export async function scheduleTrackAction(
       workspaceId,
     });
 
-    if (!context.renderReady) {
-      if (context.shouldEnqueueRender) {
-        await enqueueRender(supabase, {
-          trackId,
-          videoRenderId: context.videoRenderId,
-          workspaceId,
-        });
-      }
-
-      revalidateTrack(trackId);
-
-      return {
-        message:
-          "Render queued. Schedule this track after the video is rendered.",
-        ok: false,
-      };
+    if (context.shouldEnqueueRender) {
+      await enqueueRender(supabase, {
+        trackId,
+        videoRenderId: context.videoRenderId,
+        workspaceId,
+      });
     }
 
-    const upload = await createYoutubeUpload({
+    const upload = await createOrReuseYoutubeUpload({
       scheduledAt,
       status: "scheduled",
       supabase,
@@ -193,6 +183,26 @@ export async function scheduleTrackAction(
       videoRenderId: context.videoRenderId,
       workspaceId,
     });
+
+    if (!upload.created) {
+      if (upload.status !== "scheduled") {
+        return {
+          message: "This track is already publishing.",
+          ok: false,
+        };
+      }
+
+      const { error } = await supabase
+        .from("youtube_uploads")
+        .update({ scheduled_at: scheduledAt })
+        .eq("workspace_id", workspaceId)
+        .eq("id", upload.id)
+        .eq("status", "scheduled");
+
+      if (error) {
+        throw new Error(error.message);
+      }
+    }
 
     await createAuditLog(supabase, {
       action: "upload.scheduled",
@@ -311,47 +321,6 @@ async function createOrReuseYoutubeUpload(input: {
   }
 
   return { ...data, created: true };
-}
-
-async function createYoutubeUpload(input: {
-  scheduledAt: string | null;
-  status: "draft" | "scheduled";
-  supabase: Supabase;
-  trackId: string;
-  videoRenderId: string;
-  workspaceId: string;
-}) {
-  const [track, channel] = await Promise.all([
-    loadTrackForUpload(input.supabase, input),
-    loadDefaultChannel(input.supabase, input.workspaceId),
-  ]);
-
-  if (!channel) {
-    throw new Error("Connect a YouTube channel before publishing.");
-  }
-
-  const { data, error } = await input.supabase
-    .from("youtube_uploads")
-    .insert({
-      description: track.description,
-      privacy_status: "private",
-      scheduled_at: input.scheduledAt,
-      status: input.status,
-      tags: track.tags,
-      title: track.title ?? "Bussin Track",
-      track_id: input.trackId,
-      video_render_id: input.videoRenderId,
-      workspace_id: input.workspaceId,
-      youtube_channel_id: channel.id,
-    })
-    .select("id, status")
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data;
 }
 
 async function loadActiveYoutubeUpload(
@@ -575,10 +544,8 @@ function readTrackId(formData: FormData) {
   return trackId;
 }
 
-function revalidateTrack(trackId: string) {
-  revalidatePath(`/dashboard/tracks/${trackId}`);
-  revalidatePath("/dashboard/queue");
-  revalidatePath("/dashboard/library");
+function revalidateTrack(_trackId: string) {
+  revalidatePath("/dashboard");
 }
 
 function actionError(error: unknown, fallback: string): TrackActionResult {

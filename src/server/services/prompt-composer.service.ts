@@ -22,16 +22,20 @@ export function composePrompt(input: PromptComposerInput): ComposedPrompt {
   const style = normalizeText(stripArtistReferences(input.style));
   const mood = normalizeText(stripArtistReferences(input.mood));
   const title_seed = titleCase(`${mood} ${primaryStyleToken(style)}`.trim());
-  const suggested_tags = createTags(`${style} ${mood}`);
-  const prompt_summary = `${style} instrumental for ${mood}`;
+  const suggested_tags = createTags(`${style} ${mood}`.trim());
+  const prompt_summary = mood
+    ? `${style} instrumental for ${mood}`
+    : `${style} instrumental`;
   const final_prompt = [
     "Instrumental only, no vocals.",
     `Style: ${style}.`,
-    `Mood: ${mood}.`,
+    mood ? `Mood: ${mood}.` : null,
     `Duration: about ${input.duration_seconds} seconds.`,
     `Create ${input.track_count} distinct ${pluralize("track", input.track_count)}.`,
     "Keep the arrangement original, concise, and ready for YouTube background listening.",
-  ].join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return {
     final_prompt: final_prompt.slice(0, 600),

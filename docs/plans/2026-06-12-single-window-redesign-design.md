@@ -24,7 +24,7 @@ everything that is not on the critical path.
    from an avatar menu. KPI dashboard, library page, calendar page, and queue
    page are removed from navigation; their modules stay in the repo unused.
 4. **Scheduling is per-track, on the card.** Publish is a split button:
-   *Publish now* / *Schedule for…* (datetime picker). Scheduled cards show
+   _Publish now_ / _Schedule for…_ (datetime picker). Scheduled cards show
    `⏰ <time>` with Cancel. The pg_cron dispatcher
    (`dispatch_scheduled_youtube_uploads()`) is the single dispatch path; the
    orphaned `scheduled-publish-jobs` worker path is deleted and the

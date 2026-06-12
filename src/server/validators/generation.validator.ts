@@ -9,7 +9,7 @@ export const publishModeSchema = z.enum([
 export const createGenerationRequestSchema = z
   .object({
     style: z.string().trim().min(2).max(300),
-    mood: z.string().trim().min(2).max(300),
+    mood: z.string().trim().max(300).optional().default(""),
     duration_seconds: z.number().int().min(30).max(600),
     track_count: z.number().int().min(1).max(20),
     target_youtube_channel_id: z.string().uuid().optional(),
