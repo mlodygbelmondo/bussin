@@ -5,7 +5,6 @@ export const QUEUE_NAMES = {
   sunoPolling: "suno-polling-jobs",
   render: "render-jobs",
   youtubeUpload: "youtube-upload-jobs",
-  scheduledPublish: "scheduled-publish-jobs",
   maintenance: "maintenance-jobs",
 } as const;
 
@@ -47,12 +46,6 @@ export const youtubeUploadJobPayloadSchema = z
   })
   .strict();
 
-export const scheduledPublishJobPayloadSchema = z
-  .object({
-    requestedAt: z.string().datetime().optional(),
-  })
-  .strict();
-
 export const maintenanceJobPayloadSchema = z
   .object({
     task: z.enum([
@@ -68,7 +61,6 @@ const payloadSchemas = {
   [QUEUE_NAMES.sunoPolling]: sunoPollingJobPayloadSchema,
   [QUEUE_NAMES.render]: renderJobPayloadSchema,
   [QUEUE_NAMES.youtubeUpload]: youtubeUploadJobPayloadSchema,
-  [QUEUE_NAMES.scheduledPublish]: scheduledPublishJobPayloadSchema,
   [QUEUE_NAMES.maintenance]: maintenanceJobPayloadSchema,
 } as const;
 
@@ -78,9 +70,6 @@ export type RenderJobPayload = z.infer<typeof renderJobPayloadSchema>;
 export type YoutubeUploadJobPayload = z.infer<
   typeof youtubeUploadJobPayloadSchema
 >;
-export type ScheduledPublishJobPayload = z.infer<
-  typeof scheduledPublishJobPayloadSchema
->;
 export type MaintenanceJobPayload = z.infer<typeof maintenanceJobPayloadSchema>;
 
 export type QueuePayloadByName = {
@@ -88,7 +77,6 @@ export type QueuePayloadByName = {
   [QUEUE_NAMES.sunoPolling]: SunoPollingJobPayload;
   [QUEUE_NAMES.render]: RenderJobPayload;
   [QUEUE_NAMES.youtubeUpload]: YoutubeUploadJobPayload;
-  [QUEUE_NAMES.scheduledPublish]: ScheduledPublishJobPayload;
   [QUEUE_NAMES.maintenance]: MaintenanceJobPayload;
 };
 

@@ -27,14 +27,6 @@ export type YoutubeUploadContext = {
   youtubeVideoId?: string | null;
 };
 
-export type ScheduledYoutubeUpload = {
-  id: string;
-  workspaceId: string;
-  trackId: string;
-  videoRenderId: string;
-  scheduledAt: string;
-};
-
 export type WorkerDatabaseService = {
   createAuditLog(input: {
     workspaceId: string;
@@ -59,11 +51,6 @@ export type WorkerDatabaseService = {
     youtubeUploadId: string;
   }): Promise<YoutubeUploadContext>;
   incrementUploadedVideosUsage(workspaceId: string): Promise<void>;
-  listScheduledYoutubeUploads(): Promise<ScheduledYoutubeUpload[]>;
-  markYoutubeUploadDispatching(input: {
-    workspaceId: string;
-    youtubeUploadId: string;
-  }): Promise<void>;
   saveSunoTrackId(input: {
     workspaceId: string;
     trackId: string;
@@ -331,43 +318,6 @@ export function createWorkerDatabaseService(
         }),
       );
     },
-    async listScheduledYoutubeUploads() {
-      const rows = await selectMany<{
-        id: string;
-        scheduled_at: string | null;
-        track_id: string | null;
-        video_render_id: string | null;
-        workspace_id: string;
-      }>(
-        client
-          .from("youtube_uploads")
-          .select("id, workspace_id, track_id, video_render_id, scheduled_at")
-          .eq("status", "scheduled")
-          .order("scheduled_at", { ascending: true })
-          .limit(100),
-      );
-
-      return rows
-        .filter(
-          (row) => row.scheduled_at && row.track_id && row.video_render_id,
-        )
-        .map((row) => ({
-          id: row.id,
-          scheduledAt: row.scheduled_at as string,
-          trackId: row.track_id as string,
-          videoRenderId: row.video_render_id as string,
-          workspaceId: row.workspace_id,
-        }));
-    },
-    async markYoutubeUploadDispatching(input) {
-      await throwOnError(
-        client
-          .from("youtube_uploads")
-          .update({ status: "uploading" })
-          .eq("workspace_id", input.workspaceId)
-          .eq("id", input.youtubeUploadId),
-      );
-    },
     async saveSunoTrackId(input) {
       await throwOnError(
         client
@@ -482,16 +432,6 @@ async function selectMaybeSingle<T>(
   }
 
   return data as T | null;
-}
-
-async function selectMany<T>(promise: Promise<QueryResponse<unknown>>) {
-  const { data, error } = await promise;
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data ?? []) as T[];
 }
 
 async function throwOnError(promise: Promise<QueryResponse<unknown>>) {

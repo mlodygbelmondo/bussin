@@ -99,6 +99,29 @@ describe("Supabase migration policies", () => {
     );
   });
 
+  it("keeps a single scheduling dispatch path with a render-readiness guard", async () => {
+    const schedulingMigration = await readFile(
+      join(
+        process.cwd(),
+        "supabase/migrations/20260612090000_single_scheduling_path.sql",
+      ),
+      "utf8",
+    );
+
+    expect(schedulingMigration).toContain(
+      "create or replace function public.dispatch_scheduled_youtube_uploads",
+    );
+    expect(schedulingMigration).toMatch(
+      /video_renders\.status in \('rendered', 'completed'\)/,
+    );
+    expect(schedulingMigration).toContain(
+      "select pgmq.drop_queue('scheduled-publish-jobs');",
+    );
+    expect(schedulingMigration).toMatch(
+      /select cron\.schedule\(\s+'scheduled-publish-dispatcher'/,
+    );
+  });
+
   it("does not grant worker queue RPC execution to application users", async () => {
     const migration = await readFile(migrationPath, "utf8");
 

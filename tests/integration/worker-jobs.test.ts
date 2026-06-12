@@ -3,7 +3,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { pollSunoJob } from "../../worker/src/jobs/poll-suno";
 import { processGenerationJob } from "../../worker/src/jobs/process-generation";
-import { dispatchScheduledPublishJobs } from "../../worker/src/jobs/publish-scheduled";
 import { uploadYoutubeJob } from "../../worker/src/jobs/upload-youtube";
 import {
   ackMessage,
@@ -306,79 +305,6 @@ describe("YouTube upload worker", () => {
   });
 });
 
-describe("scheduled publish dispatcher", () => {
-  it("ignores future scheduled uploads", async () => {
-    const now = new Date("2026-06-01T12:00:00.000Z");
-    const queue = createInMemoryQueueClient();
-    const database = makeDatabaseService({
-      listScheduledYoutubeUploads: vi.fn().mockResolvedValue([
-        {
-          id: uploadId,
-          workspaceId,
-          trackId,
-          videoRenderId: renderId,
-          scheduledAt: "2026-06-01T12:05:00.000Z",
-        },
-      ]),
-    });
-
-    const result = await dispatchScheduledPublishJobs({
-      database,
-      queue,
-      now,
-    });
-
-    expect(result.enqueued).toBe(0);
-    expect(database.markYoutubeUploadDispatching).not.toHaveBeenCalled();
-    expect(
-      await consumeQueue(queue, QUEUE_NAMES.youtubeUpload, {
-        maxMessages: 1,
-        visibilityTimeoutSeconds: 30,
-      }),
-    ).toEqual([]);
-  });
-
-  it("enqueues due scheduled uploads", async () => {
-    const now = new Date("2026-06-01T12:00:00.000Z");
-    const queue = createInMemoryQueueClient();
-    const database = makeDatabaseService({
-      listScheduledYoutubeUploads: vi.fn().mockResolvedValue([
-        {
-          id: uploadId,
-          workspaceId,
-          trackId,
-          videoRenderId: renderId,
-          scheduledAt: "2026-06-01T11:59:00.000Z",
-        },
-      ]),
-    });
-
-    const result = await dispatchScheduledPublishJobs({
-      database,
-      queue,
-      now,
-    });
-
-    expect(result.enqueued).toBe(1);
-    expect(database.markYoutubeUploadDispatching).toHaveBeenCalledWith({
-      workspaceId,
-      youtubeUploadId: uploadId,
-    });
-
-    const messages = await consumeQueue(queue, QUEUE_NAMES.youtubeUpload, {
-      maxMessages: 1,
-      visibilityTimeoutSeconds: 30,
-    });
-
-    expect(messages[0]?.payload).toEqual({
-      workspaceId,
-      trackId,
-      videoRenderId: renderId,
-      youtubeUploadId: uploadId,
-    });
-  });
-});
-
 function makeDatabaseService(
   overrides: Partial<WorkerDatabaseService> = {},
 ): WorkerDatabaseService {
@@ -391,8 +317,6 @@ function makeDatabaseService(
     getRenderContext: vi.fn(),
     getYoutubeUploadContext: vi.fn(),
     incrementUploadedVideosUsage: vi.fn().mockResolvedValue(undefined),
-    listScheduledYoutubeUploads: vi.fn().mockResolvedValue([]),
-    markYoutubeUploadDispatching: vi.fn().mockResolvedValue(undefined),
     saveSunoTrackId: vi.fn().mockResolvedValue(undefined),
     saveTrackAudio: vi.fn().mockResolvedValue(undefined),
     saveVideoRenderOutput: vi.fn().mockResolvedValue(undefined),

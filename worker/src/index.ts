@@ -5,7 +5,6 @@ import { createSecretsService } from "../../src/server/services/secrets.service"
 import { loadWorkerConfig, type WorkerConfig } from "./config";
 import { pollSunoJob } from "./jobs/poll-suno";
 import { processGenerationJob } from "./jobs/process-generation";
-import { dispatchScheduledPublishJobs } from "./jobs/publish-scheduled";
 import { renderVideoJob } from "./jobs/render-video";
 import { uploadYoutubeJob } from "./jobs/upload-youtube";
 import { createWorkerLogger, type WorkerLogger } from "./logger";
@@ -58,7 +57,6 @@ const WORKER_QUEUES = [
   QUEUE_NAMES.sunoPolling,
   QUEUE_NAMES.render,
   QUEUE_NAMES.youtubeUpload,
-  QUEUE_NAMES.scheduledPublish,
   QUEUE_NAMES.maintenance,
 ] as const;
 
@@ -230,8 +228,6 @@ async function runJobHandler(
       return renderVideoJob(payload as RenderJobPayload, services);
     case QUEUE_NAMES.youtubeUpload:
       return uploadYoutubeJob(payload as YoutubeUploadJobPayload, services);
-    case QUEUE_NAMES.scheduledPublish:
-      return dispatchScheduledPublishJobs(services);
     case QUEUE_NAMES.maintenance:
       services.logger.info("Maintenance queue message acknowledged.", {
         payload,
