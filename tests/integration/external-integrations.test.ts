@@ -73,6 +73,56 @@ describe("Suno connection flow", () => {
     );
   });
 
+  it("reuses the existing connection row instead of inserting a new one", async () => {
+    const secrets = createSecretsService({
+      encryptionKey: "test-key-with-enough-entropy-for-task-five",
+    });
+    const adapter = {
+      createCustomGeneration: vi.fn(),
+      getLimits: vi.fn(),
+      getTrackById: vi.fn(),
+      getTrackStatus: vi.fn(),
+      testConnection: vi.fn().mockResolvedValue({
+        limits: { creditsLeft: 7, monthlyLimit: null, monthlyUsage: null },
+        ok: true,
+      }),
+    };
+    const repository = makeSunoRepository();
+    repository.listConnections = vi
+      .fn()
+      .mockResolvedValue([
+        { id: connectionId, status: "error", workspace_id: workspaceId },
+      ]);
+    const actions = createSunoConnectionActions({
+      adapterFactory: () => adapter,
+      repository,
+      secrets,
+    });
+
+    const result = await actions.saveConnection({
+      input: {
+        api_url: "https://api.sunoapi.org",
+        cookie: "rotated-api-key",
+        label: "Primary Suno",
+      },
+      userId,
+      workspaceId,
+    });
+
+    expect(result.status).toBe("connected");
+    expect(repository.createConnection).not.toHaveBeenCalled();
+    expect(repository.updateConnection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connectionId,
+        values: expect.objectContaining({
+          encrypted_api_url: expect.not.stringContaining("api.sunoapi.org"),
+          encrypted_cookie: expect.not.stringContaining("rotated-api-key"),
+          status: "unknown",
+        }),
+      }),
+    );
+  });
+
   it("records a normalized error when Suno test connection fails", async () => {
     const secrets = createSecretsService({
       encryptionKey: "test-key-with-enough-entropy-for-task-five",

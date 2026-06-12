@@ -82,15 +82,18 @@ async function main() {
   const secrets = createSecretsService({
     encryptionKey: config.secretsEncryptionKey,
   });
+  const database = createWorkerDatabaseService(supabase);
   const services: WorkerServices = {
-    database: createWorkerDatabaseService(supabase),
+    database,
     ffmpeg: createFfmpegService(),
     logger,
     queue,
     storage: createWorkerStorageService(supabase),
     suno: createSunoService({
-      apiBaseUrl: config.sunoApiBaseUrl,
-      apiKey: config.sunoApiKey,
+      database,
+      fallbackApiBaseUrl: config.sunoApiBaseUrl,
+      fallbackApiKey: config.sunoApiKey,
+      secrets,
     }),
     youtube: createYoutubeService({
       googleClientId: config.googleClientId,

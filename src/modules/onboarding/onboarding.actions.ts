@@ -10,6 +10,8 @@ import {
   createSunoConnectionActions,
   type SunoConnectionRepository,
 } from "@/modules/integrations/suno/suno-connection.actions";
+import { describeSunoConnectionError } from "@/modules/integrations/suno/suno-connection.errors";
+import { createSunoConnectionSchema } from "@/server/validators/suno-connection.validator";
 import {
   YOUTUBE_OAUTH_STATE_COOKIE,
   youtubeOAuthStateCookieOptions,
@@ -54,23 +56,50 @@ export async function saveSunoConnectionAction(formData: FormData) {
   }
 
   const { supabase, user, workspaceId } = await requireWorkspace();
-  const label = String(formData.get("label") ?? "Primary Suno");
+  const label = String(formData.get("label") || "Primary Suno");
   const apiUrl = String(formData.get("api_url") ?? "");
   const cookie = String(formData.get("cookie") ?? "");
+  const parsed = createSunoConnectionSchema.safeParse({
+    api_url: apiUrl,
+    cookie,
+    label,
+  });
+
+  if (!parsed.success) {
+    redirectWithSunoError(
+      parsed.error.issues[0]?.message ?? "Invalid Suno connection details.",
+    );
+  }
+
   const actions = createSunoConnectionActions({
     repository: createSunoRepository(supabase),
     secrets: createSecretsService({
       encryptionKey: env.SECRETS_ENCRYPTION_KEY,
     }),
   });
+  let result: Awaited<ReturnType<typeof actions.saveConnection>>;
 
-  await actions.saveConnection({
-    input: { api_url: apiUrl, cookie, label },
-    userId: user.id,
-    workspaceId,
-  });
+  try {
+    result = await actions.saveConnection({
+      input: parsed.data,
+      userId: user.id,
+      workspaceId,
+    });
+  } catch {
+    redirectWithSunoError("Could not save the Suno connection. Try again.");
+  }
 
   revalidatePath("/onboarding");
+
+  if (result.status !== "connected") {
+    redirectWithSunoError(describeSunoConnectionError(result.last_error));
+  }
+
+  redirect("/onboarding");
+}
+
+function redirectWithSunoError(message: string): never {
+  redirect(`/onboarding?suno_error=${encodeURIComponent(message)}`);
 }
 
 export async function startYoutubeOAuthAction() {
@@ -116,7 +145,7 @@ export async function saveDefaultsAction(formData: FormData) {
 
 export async function completeOnboardingAction(formData: FormData) {
   if (isMockMode) {
-    redirect("/dashboard/generate");
+    redirect("/dashboard");
   }
 
   const { supabase, workspaceId } = await requireWorkspace();
@@ -132,7 +161,7 @@ export async function completeOnboardingAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  redirect("/dashboard/generate");
+  redirect("/dashboard");
 }
 
 async function persistDefaults(input: {

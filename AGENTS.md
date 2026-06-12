@@ -125,6 +125,12 @@ This is not the Next.js you know: this project uses Next.js 16 with breaking API
 - Store async failure details in clear `failure_reason` fields where the schema supports it — the feed surfaces them verbatim with a Retry button.
 - Users bring their own Suno account; plan limits (free tier = trial) are
   enforced server-side in `plan-limits.service` before generation.
+- Generation runs on each workspace's own Suno API key: the worker decrypts
+  the `connected` row in `suno_connections` per job and marks it `error` on
+  auth failures. The env `SUNO_API_KEY` is a dev-only fallback for
+  workspaces with no connection — never make it the primary path. The
+  generation service refuses to enqueue when no Suno account is connected
+  (`SUNO_NOT_CONNECTED`).
 
 ## UI Rules
 

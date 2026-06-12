@@ -3,6 +3,7 @@ export type ServiceErrorCode =
   | "FORBIDDEN"
   | "INVALID_STATE"
   | "PLAN_LIMIT_EXCEEDED"
+  | "SUNO_NOT_CONNECTED"
   | "VALIDATION_ERROR";
 
 export class ServiceError extends Error {

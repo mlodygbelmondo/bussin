@@ -7,6 +7,12 @@ export type GenerationContext = {
   title: string;
 };
 
+export type SunoConnectionContext = {
+  connectionId: string;
+  encryptedApiUrl: string;
+  encryptedCookie: string;
+};
+
 export type RenderContext = {
   audioStoragePath: string;
   imageStoragePath?: string | null;
@@ -46,6 +52,12 @@ export type WorkerDatabaseService = {
     trackId: string;
     videoRenderId: string;
   }): Promise<RenderContext>;
+  getSunoConnection(workspaceId: string): Promise<SunoConnectionContext | null>;
+  markSunoConnectionError(input: {
+    workspaceId: string;
+    connectionId: string;
+    lastError: string;
+  }): Promise<void>;
   getYoutubeUploadContext(input: {
     workspaceId: string;
     youtubeUploadId: string;
@@ -193,6 +205,45 @@ export function createWorkerDatabaseService(
         publishNow: Boolean(upload?.id),
         youtubeUploadId: upload?.id ?? null,
       };
+    },
+    async getSunoConnection(workspaceId) {
+      const connection = await selectMaybeSingle<{
+        id: string;
+        encrypted_api_url: string | null;
+        encrypted_cookie: string | null;
+      }>(
+        client
+          .from("suno_connections")
+          .select("id, encrypted_api_url, encrypted_cookie")
+          .eq("workspace_id", workspaceId)
+          .eq("status", "connected")
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      );
+
+      if (!connection?.encrypted_api_url || !connection.encrypted_cookie) {
+        return null;
+      }
+
+      return {
+        connectionId: connection.id,
+        encryptedApiUrl: connection.encrypted_api_url,
+        encryptedCookie: connection.encrypted_cookie,
+      };
+    },
+    async markSunoConnectionError(input) {
+      await throwOnError(
+        client
+          .from("suno_connections")
+          .update({
+            last_checked_at: new Date().toISOString(),
+            last_error: input.lastError,
+            status: "error",
+          })
+          .eq("workspace_id", input.workspaceId)
+          .eq("id", input.connectionId),
+      );
     },
     async getYoutubeUploadContext(input) {
       const upload = await selectSingle<{

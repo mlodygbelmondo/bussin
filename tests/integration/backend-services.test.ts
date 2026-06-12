@@ -99,6 +99,31 @@ describe("backend service orchestration", () => {
     expect(queue.enqueueGenerationJob).not.toHaveBeenCalled();
   });
 
+  it("blocks generation requests when no Suno account is connected", async () => {
+    const queue = {
+      enqueueGenerationJob: vi.fn().mockResolvedValue(undefined),
+    };
+    const repository = makeGenerationRepository();
+    repository.hasConnectedSunoAccount = vi.fn().mockResolvedValue(false);
+    const service = createGenerationRequestService({ queue, repository });
+
+    await expect(
+      service.create({
+        workspaceId,
+        createdByUserId: userId,
+        input: {
+          style: "lofi house",
+          mood: "focused",
+          duration_seconds: 120,
+          track_count: 1,
+          publish_mode: "draft",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "SUNO_NOT_CONNECTED" });
+    expect(repository.createGenerationRequest).not.toHaveBeenCalled();
+    expect(queue.enqueueGenerationJob).not.toHaveBeenCalled();
+  });
+
   it("approving a track creates a queued render row and audit log", async () => {
     const repository = makeTrackRepository();
     const service = createTrackService({ repository });
@@ -176,6 +201,7 @@ function makeGenerationRepository(): GenerationRequestRepository {
       scheduledUploads: 0,
       youtubeChannels: 0,
     }),
+    hasConnectedSunoAccount: vi.fn().mockResolvedValue(true),
     incrementGeneratedTracks: vi.fn().mockResolvedValue({ id: "usage-id" }),
   };
 }

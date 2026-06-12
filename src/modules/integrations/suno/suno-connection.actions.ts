@@ -29,6 +29,9 @@ export type SunoConnectionRepository = {
     values: Pick<
       TablesUpdate<"suno_connections">,
       | "credits_left"
+      | "encrypted_api_url"
+      | "encrypted_cookie"
+      | "label"
       | "last_checked_at"
       | "last_error"
       | "monthly_limit"
@@ -67,13 +70,27 @@ export function createSunoConnectionActions(input: {
       const parsed = createSunoConnectionSchema.parse(params.input);
       const encryptedApiUrl = input.secrets.encrypt(parsed.api_url);
       const encryptedCookie = input.secrets.encrypt(parsed.cookie);
-      const connection = await input.repository.createConnection({
-        encrypted_api_url: encryptedApiUrl,
-        encrypted_cookie: encryptedCookie,
-        label: parsed.label,
-        status: "unknown",
-        workspace_id: params.workspaceId,
-      });
+      const existing = await input.repository.listConnections(
+        params.workspaceId,
+      );
+      const connection = existing[0]
+        ? await input.repository.updateConnection({
+            connectionId: existing[0].id,
+            values: {
+              encrypted_api_url: encryptedApiUrl,
+              encrypted_cookie: encryptedCookie,
+              label: parsed.label,
+              status: "unknown",
+            },
+            workspaceId: params.workspaceId,
+          })
+        : await input.repository.createConnection({
+            encrypted_api_url: encryptedApiUrl,
+            encrypted_cookie: encryptedCookie,
+            label: parsed.label,
+            status: "unknown",
+            workspace_id: params.workspaceId,
+          });
       const adapter = adapterFactory({
         apiUrl: parsed.api_url,
         credential: parsed.cookie,

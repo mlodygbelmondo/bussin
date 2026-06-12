@@ -37,8 +37,16 @@ const steps = [
   "Create first generation",
 ];
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ suno_error?: string | string[] }>;
+}) {
   const data = await loadOnboardingData();
+  const { suno_error: sunoErrorParam } = await searchParams;
+  const sunoError = Array.isArray(sunoErrorParam)
+    ? sunoErrorParam[0]
+    : sunoErrorParam;
   const suno = data.sunoConnections[0];
   const sunoConnected = data.sunoConnections.some(isConnected);
   const youtubeConnected = data.youtubeConnections.some(isConnected);
@@ -85,7 +93,7 @@ export default async function OnboardingPage() {
         </section>
 
         <section className="mt-8 grid gap-5 xl:grid-cols-4">
-          <SunoCard connection={suno} />
+          <SunoCard connection={suno} errorMessage={sunoError} />
           <YoutubeCard connected={youtubeConnected} />
           <DefaultsCard
             data={data}
@@ -270,15 +278,22 @@ function SetupCard({
 
 function SunoCard({
   connection,
+  errorMessage,
 }: {
   connection: OnboardingData["sunoConnections"][number] | undefined;
+  errorMessage: string | undefined;
 }) {
   const connected = connection?.status === "connected";
+  const storedError =
+    connection?.status === "error"
+      ? "The last connection test failed. Save the key again to retry."
+      : undefined;
+  const visibleError = errorMessage ?? storedError;
 
   return (
     <SetupCard
       active
-      description="Securely connect your Suno account to generate music."
+      description="Bring your own Suno API key so tracks generate on your account and credits."
       step="Step 1 of 4"
       title="Connect Suno"
     >
@@ -293,17 +308,26 @@ function SunoCard({
         <div className="mt-4">
           <StatusBadge connected={connected} />
         </div>
+        {!connected && visibleError ? (
+          <p
+            className="mt-4 rounded-md border border-rose-300/25 bg-rose-500/10 p-3 text-left text-sm text-rose-200"
+            data-testid="suno-connection-error"
+          >
+            {visibleError}
+          </p>
+        ) : null}
         {connected ? (
           <div className="mt-6 flex items-center justify-between rounded-md border border-slate-300/12 bg-slate-950/35 p-3 text-sm text-slate-400">
-            <span>{connection.label ?? "alexm@suno.com"}</span>
+            <span>{connection.label ?? "Suno connection"}</span>
             <Button size="sm" variant="outline">
               Disconnect
             </Button>
           </div>
         ) : (
           <form action={saveSunoConnectionAction} className="mt-6 space-y-3">
-            <Input name="label" placeholder="Suno account label" />
+            <Input name="label" placeholder="Connection label (optional)" />
             <Input
+              defaultValue="https://api.sunoapi.org"
               name="api_url"
               placeholder="https://api.sunoapi.org"
               required
@@ -311,25 +335,35 @@ function SunoCard({
             />
             <Input
               name="cookie"
-              placeholder="Suno session cookie"
+              placeholder="Suno API key"
               required
               type="password"
             />
             <Button className="w-full" type="submit">
               Test & save Suno
             </Button>
+            <p className="text-left text-xs text-slate-500">
+              Create a key at sunoapi.org under API Key Management. We test it
+              before saving.
+            </p>
           </form>
         )}
       </div>
 
       <div className="mt-6 space-y-5">
         {[
-          ["Secure OAuth connections", "We never store your password."],
           [
-            "Read & generate access only",
-            "We can't change your account settings.",
+            "Encrypted at rest",
+            "Your API key is stored encrypted and never shown again.",
           ],
-          ["You can disconnect anytime", "Revoke access at any time."],
+          [
+            "Your own credits",
+            "Generations run on your Suno account and plan.",
+          ],
+          [
+            "Replace it anytime",
+            "Save a new key whenever you rotate or upgrade.",
+          ],
         ].map(([title, copy]) => (
           <div className="flex gap-4" key={title}>
             <ShieldCheck className="mt-0.5 size-5 text-slate-300" />

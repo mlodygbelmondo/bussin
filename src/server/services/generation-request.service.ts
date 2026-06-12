@@ -51,6 +51,7 @@ export type GenerationRequestRepository = {
     scheduledUploads: number;
     youtubeChannels: number;
   }>;
+  hasConnectedSunoAccount(workspaceId: string): Promise<boolean>;
   incrementGeneratedTracks(
     workspaceId: string,
     amount: number,
@@ -68,6 +69,17 @@ export function createGenerationRequestService(input: {
       input: CreateGenerationRequestInput;
     }) {
       const parsed = createGenerationRequestSchema.parse(params.input);
+      const sunoConnected = await input.repository.hasConnectedSunoAccount(
+        params.workspaceId,
+      );
+
+      if (!sunoConnected) {
+        throw new ServiceError(
+          "SUNO_NOT_CONNECTED",
+          "Connect your Suno account before generating tracks.",
+        );
+      }
+
       const usage = await input.repository.getUsageSummary(params.workspaceId);
       const limit = checkPlanLimit({
         currentPlan: usage.currentPlan,

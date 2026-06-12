@@ -72,6 +72,19 @@ export function createGenerationRepository(
 
       return data;
     },
+    async hasConnectedSunoAccount(workspaceId) {
+      const { count, error } = await supabase
+        .from("suno_connections")
+        .select("id", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId)
+        .eq("status", "connected");
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return (count ?? 0) > 0;
+    },
     async getUsageSummary(workspaceId) {
       const [subscriptionResult, usageResult, channelsResult] =
         await Promise.all([
