@@ -19,12 +19,12 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "bussin-panel flex min-h-48 flex-col items-center justify-center rounded-lg border-dashed p-8 text-center",
+        "flex min-h-48 flex-col items-center justify-center rounded-lg border border-dashed border-line bg-card p-8 text-center",
         className,
       )}
     >
       {icon ? (
-        <div className="mb-4 rounded-md border border-violet-300/15 bg-violet-500/10 p-3 text-violet-100">
+        <div className="mb-4 rounded-md bg-primary/10 p-3 text-primary">
           {icon}
         </div>
       ) : null}
