@@ -43,14 +43,31 @@ const clientSchema = {
   NEXT_PUBLIC_APP_MODE: appModeSchema,
   NEXT_PUBLIC_APP_URL: z.string().url(),
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().min(1).optional(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
 };
 
-const combinedSchema = z.object({
-  ...serverSchema,
-  ...clientSchema,
-});
+const combinedSchema = z
+  .object({
+    ...serverSchema,
+    ...clientSchema,
+  })
+  .superRefine((value, context) => {
+    if (
+      value.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      value.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+    ) {
+      return;
+    }
+
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY is required",
+      path: ["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"],
+    });
+  });
 
 const mockDefaults = {
   GOOGLE_CLIENT_ID: "mock-google-client-id",
@@ -58,6 +75,7 @@ const mockDefaults = {
   GOOGLE_REDIRECT_URI: "http://localhost:3000/api/youtube/oauth/callback",
   NEXT_PUBLIC_APP_URL: "http://localhost:3000",
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "mock-supabase-anon-key",
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "mock-supabase-publishable-key",
   NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
   SECRETS_ENCRYPTION_KEY: "mock-secrets-encryption-key",
   STRIPE_SECRET_KEY: "sk_test_mock",

@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { env } from "@/lib/env";
+import { env, requireEnv } from "@/lib/env";
 import type { Database } from "@/lib/database.types";
 
 export async function createClient() {
@@ -8,7 +8,11 @@ export async function createClient() {
 
   return createServerClient<Database>(
     env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    requireEnv(
+      env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+        env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    ),
     {
       cookies: {
         getAll() {
