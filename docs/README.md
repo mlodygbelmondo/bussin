@@ -2,6 +2,12 @@
 
 Paczka jest podzielona tak, żeby wrzucać agentom zadania etapami: najpierw backend, potem Stripe, potem ekrany.
 
+> **2026-06-12 — single-window redesign.** Ekrany `03_screens/03`–`03_screens/08`
+> są zastąpione przez `03_screens/11_single_window.md` (jedno okno czatu na
+> `/dashboard`). Nie traktuj starych speców jako acceptance criteria. Design:
+> `docs/plans/2026-06-12-single-window-redesign-design.md`, design system:
+> `docs/design-system.md`, checklista przed wypuszczeniem: `docs/launch-checklist.md`.
+
 ## Kolejność wykonywania
 
 1. `01_backend/01_project_foundation.md`
