@@ -150,6 +150,93 @@ describe("Supabase migration policies", () => {
     }
   });
 
+  it("hardens usage counters, webhook idempotency, and maintenance helpers", async () => {
+    const hardeningMigration = await readFile(
+      join(
+        process.cwd(),
+        "supabase/migrations/20260613090000_usage_billing_maintenance_hardening.sql",
+      ),
+      "utf8",
+    );
+
+    expect(hardeningMigration).toContain(
+      "create or replace function public.increment_usage_counter",
+    );
+    expect(hardeningMigration).toMatch(
+      /on conflict \(workspace_id, period_start, period_end\)/,
+    );
+    expect(hardeningMigration).toMatch(
+      /generated_tracks_count\s*=\s*public\.usage_counters\.generated_tracks_count\s*\+\s*greatest\(excluded\.generated_tracks_count, 0\)/,
+    );
+    expect(hardeningMigration).toMatch(
+      /if not public\.is_workspace_member\(target_workspace_id\)/,
+    );
+    expect(hardeningMigration).toMatch(
+      /revoke execute on function public\.increment_usage_counter\(\s*uuid, timestamptz, timestamptz, integer, integer, integer, integer\s*\) from public, anon;/,
+    );
+    expect(hardeningMigration).toMatch(
+      /grant execute on function public\.increment_usage_counter\(\s*uuid, timestamptz, timestamptz, integer, integer, integer, integer\s*\) to authenticated, service_role;/,
+    );
+
+    expect(hardeningMigration).toContain(
+      "create table public.stripe_webhook_events",
+    );
+    expect(hardeningMigration).toContain(
+      "alter table public.stripe_webhook_events enable row level security;",
+    );
+    expect(hardeningMigration).toContain(
+      "revoke all on table public.stripe_webhook_events from public, anon, authenticated;",
+    );
+    expect(hardeningMigration).toContain(
+      "grant select, insert, delete on table public.stripe_webhook_events to service_role;",
+    );
+
+    expect(hardeningMigration).toContain(
+      "create or replace function public.reserve_monthly_upload_capacity",
+    );
+    expect(hardeningMigration).toMatch(/for update\s*;/);
+    expect(hardeningMigration).toMatch(
+      /uploaded_videos_count = counter\.uploaded_videos_count \+ 1/,
+    );
+    expect(hardeningMigration).toMatch(
+      /grant execute on function public\.reserve_monthly_upload_capacity\(\s*uuid, timestamptz, timestamptz\s*\) to service_role;/,
+    );
+
+    expect(hardeningMigration).toContain(
+      "create or replace function public.recover_stale_jobs",
+    );
+    expect(hardeningMigration).toMatch(
+      /where status in \('generating', 'polling'\)\s+and updated_at < cutoff/,
+    );
+    expect(hardeningMigration).toMatch(
+      /where status = 'running'\s+and updated_at < cutoff\s+returning workspace_id, track_id/,
+    );
+    expect(hardeningMigration).toMatch(
+      /select render_counts\.recovered_count into stale_renders/,
+    );
+    expect(hardeningMigration).toMatch(
+      /where status = 'uploading'\s+and updated_at < cutoff/,
+    );
+    expect(hardeningMigration).toContain(
+      "create or replace function public.list_stale_temp_objects",
+    );
+    expect(hardeningMigration).toMatch(
+      /where objects\.bucket_id = 'temp'\s+and objects\.created_at < now\(\) - make_interval\(days => greatest\(older_than_days, 1\)\)/,
+    );
+    expect(hardeningMigration).toMatch(
+      /revoke execute on function public\.recover_stale_jobs\(integer\) from public, anon, authenticated;/,
+    );
+    expect(hardeningMigration).toMatch(
+      /revoke execute on function public\.list_stale_temp_objects\(integer\) from public, anon, authenticated;/,
+    );
+    expect(hardeningMigration).toMatch(
+      /grant execute on function public\.recover_stale_jobs\(integer\) to service_role;/,
+    );
+    expect(hardeningMigration).toMatch(
+      /grant execute on function public\.list_stale_temp_objects\(integer\) to service_role;/,
+    );
+  });
+
   it("requires workspace manager access for publish-now RPC updates", async () => {
     const migration = await readFile(
       join(

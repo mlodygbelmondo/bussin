@@ -31,7 +31,8 @@ or anything touched since.
 - ⬜ Suno cookies encrypted at rest with `SECRETS_ENCRYPTION_KEY` — confirm
   the production key is set and not a mock value.
 - ⬜ Supabase RLS policies applied in the production project (run all
-  migrations including `20260612090000_single_scheduling_path.sql`).
+  migrations including `20260612090000_single_scheduling_path.sql` and
+  `20260613090000_usage_billing_maintenance_hardening.sql`).
 
 ## Money path (Stripe live decision: free tier + paid plans)
 

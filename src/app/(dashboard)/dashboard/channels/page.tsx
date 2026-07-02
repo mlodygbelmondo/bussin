@@ -34,6 +34,7 @@ export default async function ChannelsPage({
   const params = await searchParams;
   const query = singleParam(params?.q)?.trim() ?? "";
   const status = singleParam(params?.status) ?? "all";
+  const youtubeError = singleParam(params?.youtube_error)?.trim();
   const filteredChannels = data.channels.filter((channel) => {
     const matchesStatus = status === "all" || channel.status === status;
     const needle = query.toLowerCase();
@@ -61,6 +62,15 @@ export default async function ChannelsPage({
             Manage your connected platforms and publishing destinations.
           </p>
         </header>
+
+        {youtubeError ? (
+          <p
+            className="mb-5 rounded-md border border-danger/40 bg-danger/10 p-3 text-sm text-danger"
+            data-testid="error-state"
+          >
+            {youtubeError}
+          </p>
+        ) : null}
 
         <ChannelsHero data={data} />
 

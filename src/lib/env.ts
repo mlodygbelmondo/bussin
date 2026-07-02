@@ -18,6 +18,7 @@ const serverSchema = {
   SUNO_DEFAULT_API_BASE_URL: z.string().url(),
   SUPABASE_DB_URL: z.string().min(1).optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  WORKER_HEALTH_PORT: z.coerce.number().int().positive().default(8081),
   WORKER_ID: z.string().min(1).optional(),
   WORKER_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
   WORKER_MAX_CONCURRENCY: z.coerce.number().int().positive().default(2),
@@ -101,10 +102,47 @@ export function parseEnv(input: EnvInput): Env {
   return parsed.data;
 }
 
+// Next.js only inlines literal `process.env.X` member accesses into the
+// client bundle — enumerating `process.env` yields an empty object in the
+// browser, so every variable must be listed explicitly here.
+const runtimeEnv: EnvInput = {
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+  GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
+  NEXT_PUBLIC_APP_MODE: process.env.NEXT_PUBLIC_APP_MODE,
+  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  SECRETS_ENCRYPTION_KEY: process.env.SECRETS_ENCRYPTION_KEY,
+  STRIPE_CREATOR_PRICE_ID: process.env.STRIPE_CREATOR_PRICE_ID,
+  STRIPE_PRO_PRICE_ID: process.env.STRIPE_PRO_PRICE_ID,
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+  STRIPE_STUDIO_PRICE_ID: process.env.STRIPE_STUDIO_PRICE_ID,
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+  SUNO_ALLOWED_API_HOSTS: process.env.SUNO_ALLOWED_API_HOSTS,
+  SUNO_API_KEY: process.env.SUNO_API_KEY,
+  SUNO_DEFAULT_API_BASE_URL: process.env.SUNO_DEFAULT_API_BASE_URL,
+  SUPABASE_DB_URL: process.env.SUPABASE_DB_URL,
+  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  WORKER_HEALTH_PORT: process.env.WORKER_HEALTH_PORT,
+  WORKER_ID: process.env.WORKER_ID,
+  WORKER_MAX_ATTEMPTS: process.env.WORKER_MAX_ATTEMPTS,
+  WORKER_MAX_CONCURRENCY: process.env.WORKER_MAX_CONCURRENCY,
+  WORKER_POLL_INTERVAL_MS: process.env.WORKER_POLL_INTERVAL_MS,
+  WORKER_QUEUE_VISIBILITY_TIMEOUT_SECONDS:
+    process.env.WORKER_QUEUE_VISIBILITY_TIMEOUT_SECONDS,
+  WORKER_RETRY_BASE_DELAY_SECONDS: process.env.WORKER_RETRY_BASE_DELAY_SECONDS,
+  WORKER_RETRY_MAX_DELAY_SECONDS: process.env.WORKER_RETRY_MAX_DELAY_SECONDS,
+};
+
 export const env = createEnv({
   client: clientSchema,
   emptyStringAsUndefined: true,
-  runtimeEnv: withMockDefaults(process.env) as Record<
+  runtimeEnv: withMockDefaults(runtimeEnv) as Record<
     keyof Env,
     string | boolean | number | undefined
   >,
@@ -135,11 +173,12 @@ function withMockDefaults(input: EnvInput): EnvInput {
 }
 
 function normalizeEmptyStrings(input: EnvInput): EnvInput {
+  // Drop unset/empty entries entirely so they cannot shadow mock defaults
+  // when the normalized object is spread over them.
   return Object.fromEntries(
-    Object.entries(input).map(([key, value]) => [
-      key,
-      value === "" ? undefined : value,
-    ]),
+    Object.entries(input).filter(
+      ([, value]) => value !== undefined && value !== "",
+    ),
   );
 }
 

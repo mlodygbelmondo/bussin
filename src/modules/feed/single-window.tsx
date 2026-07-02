@@ -24,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { APP_NAME } from "@/lib/app-config";
+import { APP_NAME } from "@/lib/app-public-config";
 import { createFeedGenerationAction } from "@/modules/feed/feed.actions";
 import { FeedList } from "@/modules/feed/feed-cards";
 import type {

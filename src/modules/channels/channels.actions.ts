@@ -13,6 +13,7 @@ import {
 } from "@/modules/integrations/suno/suno-connection.actions";
 import { createSecretsService } from "@/server/services/secrets.service";
 import {
+  isYoutubeChannelCapacityError,
   syncYoutubeChannels,
   type YoutubeConnectionRepository,
 } from "@/server/services/youtube/youtube-oauth.service";
@@ -233,6 +234,15 @@ export async function syncYoutubeChannelsAction(
 
     return { message: "Channels synced.", ok: true };
   } catch (syncError) {
+    if (isYoutubeChannelCapacityError(syncError)) {
+      revalidatePath("/dashboard/channels");
+
+      return {
+        message: syncError.message,
+        ok: false,
+      };
+    }
+
     await admin
       .from("youtube_connections")
       .update({ status: "error" })
@@ -359,8 +369,37 @@ function canManageIntegrations(role: string | null | undefined) {
 
 function createYoutubeRepository(
   admin: ReturnType<typeof createAdminClient>,
-): Pick<YoutubeConnectionRepository, "getDefaultChannelId" | "upsertChannel"> {
+): Pick<
+  YoutubeConnectionRepository,
+  "getBillingPlan" | "getDefaultChannelId" | "listChannelIds" | "upsertChannel"
+> {
   return {
+    async getBillingPlan(workspaceId) {
+      const { data, error } = await admin
+        .from("subscriptions")
+        .select("plan, status")
+        .eq("workspace_id", workspaceId)
+        .maybeSingle();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data;
+    },
+    async listChannelIds(workspaceId) {
+      const { data, error } = await admin
+        .from("youtube_channels")
+        .select("youtube_channel_id")
+        .eq("workspace_id", workspaceId)
+        .eq("status", "connected");
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return (data ?? []).map((row) => row.youtube_channel_id);
+    },
     async getDefaultChannelId(workspaceId) {
       const { data, error } = await admin
         .from("youtube_channels")

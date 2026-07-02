@@ -1,0 +1,48 @@
+# Bussin external worker (Suno polling, FFmpeg rendering, YouTube uploads).
+#
+# Build from the REPO ROOT — the worker imports shared code from src/
+# (e.g. src/server/services/secrets.service, src/lib/env):
+#
+#   docker build -f Dockerfile.worker -t bussin-worker .
+#
+# tsx runs TypeScript directly, so there is no build step; devDependencies
+# (tsx, typescript) are installed on purpose.
+
+FROM node:22-slim
+
+# ffmpeg: spawned by worker/src/services/ffmpeg (must be on PATH).
+# wget: used by the container HEALTHCHECK below.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ffmpeg wget ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+# Pin pnpm. package.json has no "packageManager" field; 10.12.4 matches the
+# lockfileVersion 9 lockfile and the version used in development.
+RUN corepack enable && corepack prepare pnpm@10.12.4 --activate
+
+WORKDIR /app
+
+# Install dependencies from the lockfile first for layer caching.
+# --prod=false keeps devDependencies (tsx is a devDependency and is the
+# runtime for the worker). NODE_ENV is set only after this layer so the
+# install is not silently pruned to prod-only.
+COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile --prod=false
+
+# Only what the worker needs: shared src/, the worker itself, and tsconfig.
+COPY --chown=node:node tsconfig.json ./
+COPY --chown=node:node src/ ./src/
+COPY --chown=node:node worker/ ./worker/
+
+ENV NODE_ENV=production
+ENV WORKER_HEALTH_PORT=8081
+
+USER node
+
+# Health endpoint: GET /healthz on WORKER_HEALTH_PORT (default 8081).
+EXPOSE 8081
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -q -O /dev/null "http://127.0.0.1:${WORKER_HEALTH_PORT:-8081}/healthz" || exit 1
+
+# Same entrypoint as the dev script: TMPDIR-guarded tsx run of the worker.
+CMD ["pnpm", "worker"]

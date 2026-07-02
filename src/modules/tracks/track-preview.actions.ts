@@ -6,10 +6,18 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json, TablesInsert } from "@/lib/database.types";
 import { isMockMode } from "@/lib/app-config";
 import { createClient } from "@/lib/supabase/server";
+import { effectiveBillingPlan } from "@/server/services/plan-limits.service";
 import {
   createTrackService,
   type TrackRepository,
 } from "@/server/services/track.service";
+import {
+  checkUploadPlanLimit,
+  uploadLimitMessage,
+  type UploadLimitMode,
+  type UploadLimitsRepository,
+} from "@/server/services/upload-limits.service";
+import { getCurrentUsagePeriod } from "@/server/services/usage.service";
 import { enqueueWorkerQueueJob } from "@/server/services/worker-queue.service";
 import type { TrackActionResult } from "@/modules/tracks/track-preview.types";
 
@@ -102,6 +110,8 @@ export async function publishTrackNowAction(
     }
 
     const upload = await createOrReuseYoutubeUpload({
+      ensureCanCreate: () =>
+        assertUploadWithinPlanLimits(supabase, workspaceId, "publish_now"),
       scheduledAt: null,
       status: "draft",
       supabase,
@@ -176,6 +186,8 @@ export async function scheduleTrackAction(
     }
 
     const upload = await createOrReuseYoutubeUpload({
+      ensureCanCreate: () =>
+        assertUploadWithinPlanLimits(supabase, workspaceId, "schedule"),
       scheduledAt,
       status: "scheduled",
       supabase,
@@ -278,6 +290,7 @@ async function loadLatestRender(
 }
 
 async function createOrReuseYoutubeUpload(input: {
+  ensureCanCreate?: () => Promise<void>;
   scheduledAt: string | null;
   status: "draft" | "scheduled";
   supabase: Supabase;
@@ -298,6 +311,10 @@ async function createOrReuseYoutubeUpload(input: {
   if (existing) {
     return { ...existing, created: false };
   }
+
+  // Plan limits only gate creating a new upload; reusing or rescheduling an
+  // existing one stays allowed.
+  await input.ensureCanCreate?.();
 
   const { data, error } = await input.supabase
     .from("youtube_uploads")
@@ -321,6 +338,90 @@ async function createOrReuseYoutubeUpload(input: {
   }
 
   return { ...data, created: true };
+}
+
+async function assertUploadWithinPlanLimits(
+  supabase: Supabase,
+  workspaceId: string,
+  mode: UploadLimitMode,
+) {
+  const result = await checkUploadPlanLimit({
+    mode,
+    repository: createUploadLimitsRepository(supabase),
+    workspaceId,
+  });
+
+  if (!result.allowed) {
+    throw new Error(
+      uploadLimitMessage(result) ?? "Plan limit reached for uploads.",
+    );
+  }
+}
+
+function createUploadLimitsRepository(
+  supabase: Supabase,
+): UploadLimitsRepository {
+  return {
+    async countScheduledUploads(workspaceId) {
+      const { count, error } = await supabase
+        .from("youtube_uploads")
+        .select("id", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId)
+        .eq("status", "scheduled");
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return count ?? 0;
+    },
+    async getEffectivePlan(workspaceId) {
+      const { data, error } = await supabase
+        .from("subscriptions")
+        .select("plan, status")
+        .eq("workspace_id", workspaceId)
+        .maybeSingle();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data ? effectiveBillingPlan(data.plan, data.status) : null;
+    },
+    async getMonthlyUploadedCount(workspaceId) {
+      const period = getCurrentUsagePeriod();
+      const { data, error } = await supabase
+        .from("usage_counters")
+        .select("uploaded_videos_count")
+        .eq("workspace_id", workspaceId)
+        .eq("period_start", period.periodStart)
+        .eq("period_end", period.periodEnd)
+        .maybeSingle();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data?.uploaded_videos_count ?? 0;
+    },
+    async getMonthlyPendingUploadCount(workspaceId) {
+      const period = getCurrentUsagePeriod();
+      const { count, error } = await supabase
+        .from("youtube_uploads")
+        .select("id", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId)
+        .is("scheduled_at", null)
+        .gte("created_at", period.periodStart)
+        .lt("created_at", period.periodEnd)
+        .in("status", ["draft", "uploading"]);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return count ?? 0;
+    },
+  };
 }
 
 async function loadActiveYoutubeUpload(

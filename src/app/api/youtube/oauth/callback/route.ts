@@ -61,12 +61,23 @@ export async function GET(request: Request) {
     }),
     stateSecret: env.SECRETS_ENCRYPTION_KEY,
   });
-  const result = await service.completeOAuth({
-    code,
-    stateToken,
-    userId: user.id,
-  });
-  const returnTo = getSafeOAuthReturnPath(result.returnTo);
+  let returnTo: string;
+
+  try {
+    const result = await service.completeOAuth({
+      code,
+      stateToken,
+      userId: user.id,
+    });
+    returnTo = getSafeOAuthReturnPath(result.returnTo);
+  } catch (error) {
+    console.error("YouTube OAuth completion failed.", { error });
+
+    const message =
+      error instanceof Error ? error.message : "YouTube connection failed.";
+    returnTo = `/dashboard/channels?youtube_error=${encodeURIComponent(message)}`;
+  }
+
   const response = NextResponse.redirect(new URL(returnTo, requestUrl.origin));
 
   response.cookies.set(YOUTUBE_OAUTH_STATE_COOKIE, "", {
@@ -94,6 +105,19 @@ function createRouteYoutubeRepository(
 
       return data;
     },
+    async getBillingPlan(workspaceId) {
+      const { data, error } = await supabase
+        .from("subscriptions")
+        .select("plan, status")
+        .eq("workspace_id", workspaceId)
+        .maybeSingle();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data;
+    },
     async getDefaultChannelId(workspaceId) {
       const { data, error } = await supabase
         .from("youtube_channels")
@@ -107,6 +131,19 @@ function createRouteYoutubeRepository(
       }
 
       return data?.youtube_channel_id ?? null;
+    },
+    async listChannelIds(workspaceId) {
+      const { data, error } = await supabase
+        .from("youtube_channels")
+        .select("youtube_channel_id")
+        .eq("workspace_id", workspaceId)
+        .eq("status", "connected");
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return (data ?? []).map((row) => row.youtube_channel_id);
     },
     async updateConnectionStatus(input) {
       const { data, error } = await supabase

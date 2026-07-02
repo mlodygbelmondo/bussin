@@ -63,6 +63,23 @@ export type WorkerDatabaseService = {
     youtubeUploadId: string;
   }): Promise<YoutubeUploadContext>;
   incrementUploadedVideosUsage(workspaceId: string): Promise<void>;
+  reserveUploadedVideosUsage(workspaceId: string): Promise<void>;
+  listConnectedSunoConnections(): Promise<
+    Array<{ connectionId: string; workspaceId: string }>
+  >;
+  listStaleTempObjects(olderThanDays: number): Promise<string[]>;
+  recoverStaleJobs(staleMinutes: number): Promise<{
+    staleTracks: number;
+    staleRenders: number;
+    staleUploads: number;
+  }>;
+  updateSunoConnectionLimits(input: {
+    connectionId: string;
+    workspaceId: string;
+    creditsLeft: number | null;
+    monthlyLimit: number | null;
+    monthlyUsage: number | null;
+  }): Promise<void>;
   saveSunoTrackId(input: {
     workspaceId: string;
     trackId: string;
@@ -103,6 +120,13 @@ export type WorkerDatabaseService = {
     failureReason?: string | null;
   }): Promise<void>;
 };
+
+export class WorkerPlanLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "WorkerPlanLimitError";
+  }
+}
 
 export function createWorkerDatabaseService(
   supabase: SupabaseClient,
@@ -335,38 +359,103 @@ export function createWorkerDatabaseService(
     },
     async incrementUploadedVideosUsage(workspaceId) {
       const { periodEnd, periodStart } = currentMonthlyPeriod();
-      const existing = await selectMaybeSingle<{
-        id: string;
-        uploaded_videos_count: number;
-      }>(
-        client
-          .from("usage_counters")
-          .select("id, uploaded_videos_count")
-          .eq("workspace_id", workspaceId)
-          .eq("period_start", periodStart)
-          .eq("period_end", periodEnd)
-          .maybeSingle(),
-      );
-
-      if (existing) {
-        await throwOnError(
-          client
-            .from("usage_counters")
-            .update({
-              uploaded_videos_count: existing.uploaded_videos_count + 1,
-            })
-            .eq("id", existing.id),
-        );
-        return;
-      }
 
       await throwOnError(
-        client.from("usage_counters").insert({
-          period_end: periodEnd,
-          period_start: periodStart,
-          uploaded_videos_count: 1,
-          workspace_id: workspaceId,
+        client.rpc("increment_usage_counter", {
+          target_period_end: periodEnd,
+          target_period_start: periodStart,
+          target_workspace_id: workspaceId,
+          uploaded_videos_delta: 1,
         }),
+      );
+    },
+    async reserveUploadedVideosUsage(workspaceId) {
+      const { periodEnd, periodStart } = currentMonthlyPeriod();
+      const { data, error } = await client.rpc(
+        "reserve_monthly_upload_capacity",
+        {
+          target_period_end: periodEnd,
+          target_period_start: periodStart,
+          target_workspace_id: workspaceId,
+        },
+      );
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      const result = data as { allowed?: boolean; reason?: string | null };
+
+      if (!result.allowed) {
+        throw new WorkerPlanLimitError(
+          result.reason ?? "Monthly upload limit reached.",
+        );
+      }
+    },
+    async listConnectedSunoConnections() {
+      const { data, error } = await client
+        .from("suno_connections")
+        .select("id, workspace_id")
+        .eq("status", "connected");
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      const rows = (data ?? []) as Array<{ id: string; workspace_id: string }>;
+
+      return rows.map((row) => ({
+        connectionId: row.id,
+        workspaceId: row.workspace_id,
+      }));
+    },
+    async listStaleTempObjects(olderThanDays) {
+      const { data, error } = await client.rpc("list_stale_temp_objects", {
+        older_than_days: olderThanDays,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      const rows = (data ?? []) as Array<{ name: string }>;
+
+      return rows.map((row) => row.name);
+    },
+    async recoverStaleJobs(staleMinutes) {
+      const { data, error } = await client.rpc("recover_stale_jobs", {
+        stale_minutes: staleMinutes,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      const counts = (data ?? {}) as Partial<{
+        staleTracks: number;
+        staleRenders: number;
+        staleUploads: number;
+      }>;
+
+      return {
+        staleRenders: counts.staleRenders ?? 0,
+        staleTracks: counts.staleTracks ?? 0,
+        staleUploads: counts.staleUploads ?? 0,
+      };
+    },
+    async updateSunoConnectionLimits(input) {
+      await throwOnError(
+        client
+          .from("suno_connections")
+          .update({
+            credits_left: input.creditsLeft,
+            last_checked_at: new Date().toISOString(),
+            last_error: null,
+            monthly_limit: input.monthlyLimit,
+            monthly_usage: input.monthlyUsage,
+          })
+          .eq("workspace_id", input.workspaceId)
+          .eq("id", input.connectionId),
       );
     },
     async saveSunoTrackId(input) {
@@ -515,6 +604,10 @@ type QueryResponse<T> = {
 
 type SupabaseDataClient = {
   from(table: string): SupabaseQueryBuilder;
+  rpc(
+    functionName: string,
+    args?: Record<string, unknown>,
+  ): Promise<QueryResponse<unknown>>;
 };
 
 type SupabaseQueryBuilder = Promise<QueryResponse<unknown>> & {

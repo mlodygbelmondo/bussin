@@ -9,7 +9,7 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { APP_NAME } from "@/lib/app-config";
+import { APP_NAME } from "@/lib/app-public-config";
 
 const examplePrompts = [
   "Chill lofi beats for a late-night study channel",

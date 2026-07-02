@@ -1,6 +1,6 @@
 import { ArrowLeft, AudioWaveform } from "lucide-react";
 import Link from "next/link";
-import { APP_NAME } from "@/lib/app-config";
+import { APP_NAME } from "@/lib/app-public-config";
 import { cn } from "@/lib/utils";
 
 type DashboardTopBarProps = {

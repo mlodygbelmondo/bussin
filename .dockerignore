@@ -1,0 +1,25 @@
+# Keep the Docker build context small. The worker image (Dockerfile.worker)
+# only needs package manifests, tsconfig.json, src/, and worker/.
+
+node_modules
+.next
+.git
+tests
+docs
+design-reference
+supabase
+.env*
+!.env.example
+
+# Build/test artifacts
+coverage
+out
+build
+*.tsbuildinfo
+playwright-report
+test-results
+
+# Local tooling
+.claude
+.vercel
+.DS_Store

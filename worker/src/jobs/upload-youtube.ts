@@ -3,7 +3,11 @@ import {
   type YoutubeUploadJobPayload,
   parseQueuePayload,
 } from "../queue/queue-types";
-import type { WorkerDatabaseService } from "../services/database";
+import { NonRetryableJobError } from "../queue/retry-policy";
+import {
+  WorkerPlanLimitError,
+  type WorkerDatabaseService,
+} from "../services/database";
 import type { WorkerStorageService } from "../services/storage";
 import type { YoutubeService } from "../services/youtube";
 
@@ -37,6 +41,16 @@ export async function uploadYoutubeJob(
     return { skipped: true, youtubeVideoId: context.youtubeVideoId };
   }
 
+  try {
+    await services.database.reserveUploadedVideosUsage(payload.workspaceId);
+  } catch (error) {
+    if (error instanceof WorkerPlanLimitError) {
+      throw new NonRetryableJobError(error.message);
+    }
+
+    throw error;
+  }
+
   const video = await services.storage.downloadVideo(context.videoStoragePath);
   const upload = await services.youtube.uploadVideo({
     description: context.description,
@@ -66,7 +80,6 @@ export async function uploadYoutubeJob(
     trackId: payload.trackId,
     workspaceId: payload.workspaceId,
   });
-  await services.database.incrementUploadedVideosUsage(payload.workspaceId);
   await services.database.createAuditLog({
     action: "upload.uploaded",
     entityId: payload.youtubeUploadId,

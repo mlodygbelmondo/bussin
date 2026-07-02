@@ -51,6 +51,23 @@ export function getPlanLimits(plan: string | null | undefined) {
   return PLAN_LIMITS[toBillingPlan(plan)];
 }
 
+const GOOD_STANDING_STATUSES = new Set(["trialing", "active"]);
+
+// A paid plan only grants paid limits while Stripe says the subscription is
+// in good standing; past_due/unpaid/canceled fall back to trial limits.
+export function effectiveBillingPlan(
+  plan: string | null | undefined,
+  status: string | null | undefined,
+): BillingPlan {
+  const billingPlan = toBillingPlan(plan);
+
+  if (billingPlan === "trial") {
+    return "trial";
+  }
+
+  return !status || GOOD_STANDING_STATUSES.has(status) ? billingPlan : "trial";
+}
+
 export function checkPlanLimit(input: {
   currentPlan: string | null | undefined;
   metric: PlanLimitMetric;

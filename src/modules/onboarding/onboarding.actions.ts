@@ -263,7 +263,13 @@ function createOAuthRepositoryStub(): YoutubeConnectionRepository {
     createConnection() {
       throw new Error("OAuth repository is unavailable during authorization.");
     },
+    getBillingPlan() {
+      throw new Error("OAuth repository is unavailable during authorization.");
+    },
     getDefaultChannelId() {
+      throw new Error("OAuth repository is unavailable during authorization.");
+    },
+    listChannelIds() {
       throw new Error("OAuth repository is unavailable during authorization.");
     },
     updateConnectionStatus() {

@@ -1,4 +1,5 @@
-import { APP_NAME, mockUser, mockWorkspaceId } from "@/lib/app-config";
+import { mockUser, mockWorkspaceId } from "@/lib/app-config";
+import { APP_NAME } from "@/lib/app-public-config";
 import type { BillingPageData } from "@/modules/billing/billing.types";
 import type { ChannelsScreenData } from "@/modules/channels/channels.types";
 import type { DashboardHomeData } from "@/modules/dashboard/dashboard.types";

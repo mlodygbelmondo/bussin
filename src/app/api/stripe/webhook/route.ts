@@ -5,11 +5,7 @@ import { isMockMode } from "@/lib/app-config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env, requireEnv } from "@/lib/env";
 import { createStripe } from "@/lib/integrations/stripe";
-import {
-  syncCheckoutSessionCompleted,
-  syncStripeInvoice,
-  syncStripeSubscription,
-} from "@/server/services/billing/subscription.service";
+import { processStripeWebhookEvent } from "@/server/services/billing/subscription.service";
 
 export async function POST(request: Request) {
   if (isMockMode) {
@@ -36,35 +32,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  const repository = createSubscriptionRepository(createAdminClient());
-  if (event.type === "checkout.session.completed") {
-    await syncCheckoutSessionCompleted({
-      repository,
-      session: event.data.object,
+  try {
+    await processStripeWebhookEvent({
+      event,
+      repository: createSubscriptionRepository(createAdminClient()),
     });
-  }
-
-  if (
-    event.type === "customer.subscription.created" ||
-    event.type === "customer.subscription.updated" ||
-    event.type === "customer.subscription.deleted"
-  ) {
-    await syncStripeSubscription({
+  } catch (error) {
+    console.error("Stripe webhook processing failed.", {
+      error,
+      eventId: event.id,
       eventType: event.type,
-      repository,
-      subscription: event.data.object,
     });
-  }
 
-  if (
-    event.type === "invoice.payment_failed" ||
-    event.type === "invoice.payment_succeeded"
-  ) {
-    await syncStripeInvoice({
-      eventType: event.type,
-      invoice: event.data.object,
-      repository,
-    });
+    // 500 so Stripe redelivers; the event-id record makes redelivery safe.
+    return NextResponse.json({ error: "Webhook failed" }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });
@@ -99,6 +80,31 @@ function createSubscriptionRepository(
       }
 
       return data;
+    },
+    async recordWebhookEvent(input: { eventId: string; eventType: string }) {
+      const { error } = await supabase
+        .from("stripe_webhook_events")
+        .insert({ event_type: input.eventType, id: input.eventId });
+
+      if (error) {
+        if (error.code === "23505") {
+          return false;
+        }
+
+        throw error;
+      }
+
+      return true;
+    },
+    async releaseWebhookEvent(eventId: string) {
+      const { error } = await supabase
+        .from("stripe_webhook_events")
+        .delete()
+        .eq("id", eventId);
+
+      if (error) {
+        throw error;
+      }
     },
     async getWorkspaceIdForUser(userId: string) {
       const { data, error } = await supabase

@@ -50,13 +50,25 @@ export async function POST() {
     );
   }
 
-  const stripe = createStripe();
-  const portal = await stripe.billingPortal.sessions.create({
-    customer: customerId,
-    return_url: `${env.NEXT_PUBLIC_APP_URL}/dashboard`,
-  });
+  try {
+    const stripe = createStripe();
+    const portal = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${env.NEXT_PUBLIC_APP_URL}/dashboard`,
+    });
 
-  return NextResponse.json({ url: portal.url });
+    return NextResponse.json({ url: portal.url });
+  } catch (error) {
+    console.error("Stripe portal session creation failed.", {
+      customerId,
+      error,
+    });
+
+    return NextResponse.json(
+      { error: "Could not open the billing portal. Try again." },
+      { status: 502 },
+    );
+  }
 }
 
 function canManageBilling(role: string | null | undefined) {

@@ -1,8 +1,12 @@
 import "dotenv/config";
 
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import { createSecretsService } from "../../src/server/services/secrets.service";
 import { loadWorkerConfig, type WorkerConfig } from "./config";
+import { startHealthServer } from "./health";
+import { runMaintenanceJob } from "./jobs/maintenance";
 import { pollSunoJob } from "./jobs/poll-suno";
 import { processGenerationJob } from "./jobs/process-generation";
 import { renderVideoJob } from "./jobs/render-video";
@@ -25,6 +29,7 @@ import {
 import {
   QUEUE_NAMES,
   type GenerationJobPayload,
+  type MaintenanceJobPayload,
   type QueueName,
   type RenderJobPayload,
   type SunoPollingJobPayload,
@@ -42,7 +47,7 @@ import {
 import { createSunoService, type SunoService } from "./services/suno";
 import { createYoutubeService, type YoutubeService } from "./services/youtube";
 
-type WorkerServices = {
+export type WorkerServices = {
   database: WorkerDatabaseService;
   ffmpeg: FfmpegService;
   logger: WorkerLogger;
@@ -107,15 +112,30 @@ async function main() {
     pollIntervalMs: config.pollIntervalMs,
   });
 
-  await runWorkerLoop({ config, services, signal: shutdown.signal });
+  const health = startHealthServer({ logger, port: config.healthPort });
+  await health.ready;
+
+  try {
+    await runWorkerLoop({
+      config,
+      onTick: () => health.recordTick(),
+      services,
+      signal: shutdown.signal,
+    });
+  } finally {
+    await health.stop();
+  }
 }
 
 export async function runWorkerLoop(input: {
   config: WorkerConfig;
+  onTick?: () => void;
   services: WorkerServices;
   signal?: AbortSignal;
 }) {
   while (!input.signal?.aborted) {
+    input.onTick?.();
+
     const processedCount = await processQueues(input);
 
     if (processedCount === 0) {
@@ -232,10 +252,7 @@ async function runJobHandler(
     case QUEUE_NAMES.youtubeUpload:
       return uploadYoutubeJob(payload as YoutubeUploadJobPayload, services);
     case QUEUE_NAMES.maintenance:
-      services.logger.info("Maintenance queue message acknowledged.", {
-        payload,
-      });
-      return undefined;
+      return runMaintenanceJob(payload as MaintenanceJobPayload, services);
   }
 }
 
@@ -316,7 +333,17 @@ function sleep(ms: number, signal?: AbortSignal) {
   });
 }
 
-void main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+if (isMainModule()) {
+  void main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
+
+function isMainModule() {
+  if (!process.argv[1]) {
+    return false;
+  }
+
+  return import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
+}

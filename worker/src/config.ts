@@ -4,6 +4,7 @@ import { env, requireEnv } from "../../src/lib/env";
 export type WorkerConfig = {
   googleClientId: string;
   googleClientSecret: string;
+  healthPort: number;
   maxAttempts: number;
   maxConcurrency: number;
   pollIntervalMs: number;
@@ -22,6 +23,7 @@ export function loadWorkerConfig(): WorkerConfig {
   return {
     googleClientId: env.GOOGLE_CLIENT_ID,
     googleClientSecret: env.GOOGLE_CLIENT_SECRET,
+    healthPort: env.WORKER_HEALTH_PORT,
     maxAttempts: env.WORKER_MAX_ATTEMPTS,
     maxConcurrency: env.WORKER_MAX_CONCURRENCY,
     pollIntervalMs: env.WORKER_POLL_INTERVAL_MS,

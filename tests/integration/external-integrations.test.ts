@@ -3,7 +3,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { createSecretsService } from "@/server/services/secrets.service";
 import { createSunoConnectionActions } from "@/modules/integrations/suno/suno-connection.actions";
-import { createYoutubeOAuthService } from "@/server/services/youtube/youtube-oauth.service";
+import {
+  createYoutubeOAuthService,
+  isYoutubeChannelCapacityError,
+  syncYoutubeChannels,
+} from "@/server/services/youtube/youtube-oauth.service";
 import type { YoutubeChannel } from "@/server/services/youtube/youtube.types";
 
 const workspaceId = "11111111-1111-4111-8111-111111111111";
@@ -264,6 +268,11 @@ describe("YouTube OAuth connection flow", () => {
     };
     const repository = makeYoutubeRepository();
     repository.getDefaultChannelId.mockResolvedValue("UCDEFAULT");
+    // Two channels need a plan above trial (trial allows one).
+    repository.getBillingPlan.mockResolvedValue({
+      plan: "creator",
+      status: "active",
+    });
     const service = createYoutubeOAuthService({
       oauthClient,
       repository,
@@ -297,7 +306,133 @@ describe("YouTube OAuth connection flow", () => {
     );
   });
 
-  it("keeps a new connection in error status when channel sync fails", async () => {
+  it("blocks connecting more channels than the plan allows", async () => {
+    const repository = makeYoutubeRepository();
+    repository.listChannelIds.mockResolvedValue(["UC-existing"]);
+    const service = createYoutubeOAuthService({
+      oauthClient: {
+        createAuthUrl: vi
+          .fn()
+          .mockReturnValue("https://accounts.google.test/o"),
+        exchangeCodeForTokens: vi.fn().mockResolvedValue({
+          accessToken: "access-token",
+          expiryDate: 1780000000000,
+          providerAccountEmail: "creator@example.com",
+          refreshToken: "refresh-token",
+          scopes: ["https://www.googleapis.com/auth/youtube.upload"],
+        }),
+        listChannels: vi.fn().mockResolvedValue([
+          {
+            handle: "@second",
+            thumbnailUrl: null,
+            title: "Second Channel",
+            youtubeChannelId: "UC-second",
+          },
+        ]),
+      },
+      repository,
+      secrets: createSecretsService({
+        encryptionKey: "test-key-with-enough-entropy-for-task-five",
+      }),
+      stateSecret: "oauth-state-secret-with-enough-entropy",
+    });
+
+    const started = service.createAuthorizationUrl({
+      userId,
+      workspaceId,
+    });
+
+    await expect(
+      service.completeOAuth({
+        code: "oauth-code",
+        stateToken: started.stateToken,
+        userId,
+      }),
+    ).rejects.toThrow(/trial plan allows 1 YouTube channel/);
+    expect(repository.createConnection).not.toHaveBeenCalled();
+    expect(repository.upsertChannel).not.toHaveBeenCalled();
+  });
+
+  it("allows a new channel when disconnected channels are excluded from capacity", async () => {
+    const repository = makeYoutubeRepository();
+    repository.listChannelIds.mockResolvedValue([]);
+    const service = createYoutubeOAuthService({
+      oauthClient: {
+        createAuthUrl: vi
+          .fn()
+          .mockReturnValue("https://accounts.google.test/o"),
+        exchangeCodeForTokens: vi.fn().mockResolvedValue({
+          accessToken: "access-token",
+          expiryDate: 1780000000000,
+          providerAccountEmail: "creator@example.com",
+          refreshToken: "refresh-token",
+          scopes: ["https://www.googleapis.com/auth/youtube.upload"],
+        }),
+        listChannels: vi.fn().mockResolvedValue([
+          {
+            handle: "@replacement",
+            thumbnailUrl: null,
+            title: "Replacement Channel",
+            youtubeChannelId: "UC-replacement",
+          },
+        ]),
+      },
+      repository,
+      secrets: createSecretsService({
+        encryptionKey: "test-key-with-enough-entropy-for-task-five",
+      }),
+      stateSecret: "oauth-state-secret-with-enough-entropy",
+    });
+
+    const started = service.createAuthorizationUrl({
+      userId,
+      workspaceId,
+    });
+
+    await expect(
+      service.completeOAuth({
+        code: "oauth-code",
+        stateToken: started.stateToken,
+        userId,
+      }),
+    ).resolves.toMatchObject({
+      connection: expect.objectContaining({ status: "connected" }),
+    });
+    expect(repository.createConnection).toHaveBeenCalledOnce();
+    expect(repository.upsertChannel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "connected",
+        youtube_channel_id: "UC-replacement",
+      }),
+    );
+  });
+
+  it("labels channel capacity failures so callers do not mark the connection broken", async () => {
+    const repository = makeYoutubeRepository();
+    repository.listChannelIds.mockResolvedValue(["UC-existing"]);
+
+    try {
+      await syncYoutubeChannels({
+        channels: [
+          {
+            handle: "@second",
+            thumbnailUrl: null,
+            title: "Second Channel",
+            youtubeChannelId: "UC-second",
+          },
+        ],
+        connectionId,
+        repository,
+        workspaceId,
+      });
+      throw new Error("Expected syncYoutubeChannels to reject.");
+    } catch (error) {
+      expect(isYoutubeChannelCapacityError(error)).toBe(true);
+    }
+  });
+
+  it("does not persist tokens when channel discovery fails", async () => {
+    const repository = makeYoutubeRepository();
     const service = createYoutubeOAuthService({
       oauthClient: {
         createAuthUrl: vi
@@ -312,7 +447,7 @@ describe("YouTube OAuth connection flow", () => {
         }),
         listChannels: vi.fn().mockRejectedValue(new Error("channels failed")),
       },
-      repository: makeYoutubeRepository(),
+      repository,
       secrets: createSecretsService({
         encryptionKey: "test-key-with-enough-entropy-for-task-five",
       }),
@@ -331,6 +466,7 @@ describe("YouTube OAuth connection flow", () => {
         userId,
       }),
     ).rejects.toMatchObject({ code: "unknown" });
+    expect(repository.createConnection).not.toHaveBeenCalled();
   });
 
   it("rejects callbacks with mismatched OAuth state", async () => {
@@ -380,7 +516,9 @@ function makeYoutubeRepository() {
       status: "error",
       workspace_id: workspaceId,
     }),
+    getBillingPlan: vi.fn().mockResolvedValue(null),
     getDefaultChannelId: vi.fn().mockResolvedValue(null),
+    listChannelIds: vi.fn().mockResolvedValue([]),
     listChannels: vi.fn().mockResolvedValue([]),
     setDefaultChannel: vi.fn().mockResolvedValue(undefined),
     updateConnectionStatus: vi.fn().mockResolvedValue({

@@ -1,4 +1,4 @@
-import type { Tables, TablesInsert, TablesUpdate } from "@/lib/database.types";
+import type { Tables } from "@/lib/database.types";
 
 export type UsageCounter = Tables<"usage_counters">;
 
@@ -10,6 +10,13 @@ export type UsageSummary = {
   youtubeChannels: number;
 };
 
+export type UsageCounterDeltas = {
+  generatedTracks?: number;
+  uploadedVideos?: number;
+  connectedChannels?: number;
+  scheduledUploads?: number;
+};
+
 export type UsageRepository = {
   getCurrentPlan(workspaceId: string): Promise<string | null>;
   getUsageCounter(input: {
@@ -17,12 +24,11 @@ export type UsageRepository = {
     periodStart: string;
     periodEnd: string;
   }): Promise<UsageCounter | null>;
-  upsertUsageCounter(
-    input: TablesInsert<"usage_counters">,
-  ): Promise<UsageCounter>;
-  updateUsageCounter(input: {
-    id: string;
-    values: TablesUpdate<"usage_counters">;
+  incrementUsageCounter(input: {
+    workspaceId: string;
+    periodStart: string;
+    periodEnd: string;
+    deltas: UsageCounterDeltas;
   }): Promise<UsageCounter>;
 };
 
@@ -45,36 +51,24 @@ export function createUsageService(repository: UsageRepository) {
       } satisfies UsageSummary;
     },
     incrementGeneratedTracks(workspaceId: string, amount = 1) {
-      return incrementCounter(
-        repository,
-        workspaceId,
-        "generated_tracks_count",
-        amount,
-      );
+      return incrementCounter(repository, workspaceId, {
+        generatedTracks: amount,
+      });
     },
     incrementUploadedVideos(workspaceId: string, amount = 1) {
-      return incrementCounter(
-        repository,
-        workspaceId,
-        "uploaded_videos_count",
-        amount,
-      );
+      return incrementCounter(repository, workspaceId, {
+        uploadedVideos: amount,
+      });
     },
     incrementConnectedChannels(workspaceId: string, amount = 1) {
-      return incrementCounter(
-        repository,
-        workspaceId,
-        "connected_channels_count",
-        amount,
-      );
+      return incrementCounter(repository, workspaceId, {
+        connectedChannels: amount,
+      });
     },
     incrementScheduledUploads(workspaceId: string, amount = 1) {
-      return incrementCounter(
-        repository,
-        workspaceId,
-        "scheduled_uploads_count",
-        amount,
-      );
+      return incrementCounter(repository, workspaceId, {
+        scheduledUploads: amount,
+      });
     },
   };
 }
@@ -93,32 +87,16 @@ export function getCurrentUsagePeriod(now = new Date()) {
   };
 }
 
-async function incrementCounter(
+function incrementCounter(
   repository: UsageRepository,
   workspaceId: string,
-  field:
-    | "generated_tracks_count"
-    | "uploaded_videos_count"
-    | "connected_channels_count"
-    | "scheduled_uploads_count",
-  amount: number,
+  deltas: UsageCounterDeltas,
 ) {
-  const period = getCurrentUsagePeriod();
-  const existing = await repository.getUsageCounter({ workspaceId, ...period });
-
-  if (!existing) {
-    return repository.upsertUsageCounter({
-      workspace_id: workspaceId,
-      period_start: period.periodStart,
-      period_end: period.periodEnd,
-      [field]: amount,
-    });
-  }
-
-  return repository.updateUsageCounter({
-    id: existing.id,
-    values: {
-      [field]: existing[field] + amount,
-    },
+  // Single atomic upsert via the increment_usage_counter RPC; the previous
+  // read-then-write pattern lost increments under concurrent requests.
+  return repository.incrementUsageCounter({
+    workspaceId,
+    ...getCurrentUsagePeriod(),
+    deltas,
   });
 }

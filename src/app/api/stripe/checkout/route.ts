@@ -54,42 +54,54 @@ export async function POST(request: Request) {
     );
   }
 
-  const stripe = createStripe();
-  const workspace = Array.isArray(membership.workspaces)
-    ? membership.workspaces[0]
-    : membership.workspaces;
-  const customerId = await getOrCreateStripeCustomer({
-    repository: createStripeCustomerRepository(supabase),
-    stripe,
-    userEmail: user.email,
-    workspaceId: parsed.data.workspace_id,
-    workspaceName: workspace?.name ?? undefined,
-  });
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    customer: customerId,
-    line_items: [
-      {
-        price: getStripePriceIdForPlan(parsed.data.plan),
-        quantity: 1,
-      },
-    ],
-    success_url: `${env.NEXT_PUBLIC_APP_URL}/dashboard?checkout=success`,
-    cancel_url: `${env.NEXT_PUBLIC_APP_URL}/dashboard?checkout=cancelled`,
-    metadata: {
-      plan: parsed.data.plan,
-      userId: user.id,
+  try {
+    const stripe = createStripe();
+    const workspace = Array.isArray(membership.workspaces)
+      ? membership.workspaces[0]
+      : membership.workspaces;
+    const customerId = await getOrCreateStripeCustomer({
+      repository: createStripeCustomerRepository(supabase),
+      stripe,
+      userEmail: user.email,
       workspaceId: parsed.data.workspace_id,
-    },
-    subscription_data: {
+      workspaceName: workspace?.name ?? undefined,
+    });
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: customerId,
+      line_items: [
+        {
+          price: getStripePriceIdForPlan(parsed.data.plan),
+          quantity: 1,
+        },
+      ],
+      success_url: `${env.NEXT_PUBLIC_APP_URL}/dashboard?checkout=success`,
+      cancel_url: `${env.NEXT_PUBLIC_APP_URL}/dashboard?checkout=cancelled`,
       metadata: {
         plan: parsed.data.plan,
+        userId: user.id,
         workspaceId: parsed.data.workspace_id,
       },
-    },
-  });
+      subscription_data: {
+        metadata: {
+          plan: parsed.data.plan,
+          workspaceId: parsed.data.workspace_id,
+        },
+      },
+    });
 
-  return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: session.url });
+  } catch (error) {
+    console.error("Stripe checkout session creation failed.", {
+      error,
+      workspaceId: parsed.data.workspace_id,
+    });
+
+    return NextResponse.json(
+      { error: "Could not start checkout. Try again." },
+      { status: 502 },
+    );
+  }
 }
 
 function createStripeCustomerRepository(

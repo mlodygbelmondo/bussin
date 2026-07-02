@@ -17,12 +17,14 @@ export function createFfmpegService(): FfmpegService {
   return {
     async renderVideo(input) {
       const outputPath = join(tmpdir(), `${input.videoRenderId}.mp4`);
+      // Without a cover image, render onto a flat dark canvas (lavfi color
+      // source) — there is no bundled default-cover asset to fall back to.
+      const imageInputArgs = input.imageInput
+        ? ["-loop", "1", "-i", input.imageInput]
+        : ["-f", "lavfi", "-i", "color=c=0x121217:s=1920x1080:r=25"];
       const args = [
         "-y",
-        "-loop",
-        "1",
-        "-i",
-        input.imageInput ?? "assets/default-cover.png",
+        ...imageInputArgs,
         "-i",
         input.audioInput,
         "-c:v",

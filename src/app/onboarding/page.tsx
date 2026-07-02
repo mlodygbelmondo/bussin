@@ -16,7 +16,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { APP_NAME, isMockMode, mockUser } from "@/lib/app-config";
+import { isMockMode, mockUser } from "@/lib/app-config";
+import { APP_NAME } from "@/lib/app-public-config";
 import {
   completeOnboardingAction,
   saveDefaultsAction,

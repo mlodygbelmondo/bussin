@@ -1,7 +1,10 @@
 import { NonRetryableJobError } from "../../queue/retry-policy";
 import { createSunoAdapter } from "../../../../src/server/services/suno/suno-adapter";
 import { normalizeSunoError } from "../../../../src/server/services/suno/suno.errors";
-import type { SunoAdapter } from "../../../../src/server/services/suno/suno.types";
+import type {
+  SunoAdapter,
+  SunoLimits,
+} from "../../../../src/server/services/suno/suno.types";
 import type { WorkerDatabaseService } from "../database";
 
 export type SunoService = {
@@ -11,6 +14,7 @@ export type SunoService = {
     workspaceId: string;
     trackId: string;
   }): Promise<{ sunoTrackId: string }>;
+  getLimits(input: { workspaceId: string }): Promise<SunoLimits>;
   getTrackStatus(input: {
     sunoTrackId: string;
     workspaceId: string;
@@ -125,6 +129,21 @@ export function createSunoService(input: {
           title: request.title,
           waitAudio: false,
         });
+      } catch (error) {
+        return handleCredentialFailure({
+          connectionId,
+          error,
+          workspaceId: request.workspaceId,
+        });
+      }
+    },
+    async getLimits(request) {
+      const { adapter, connectionId } = await resolveAdapter(
+        request.workspaceId,
+      );
+
+      try {
+        return await adapter.getLimits();
       } catch (error) {
         return handleCredentialFailure({
           connectionId,

@@ -11,6 +11,7 @@ export type WorkerStorageService = {
     audioUrl: string;
   }): Promise<string>;
   downloadVideo(storagePath: string): Promise<Uint8Array>;
+  removeTempObjects(paths: string[]): Promise<void>;
   uploadVideo(input: {
     workspaceId: string;
     trackId: string;
@@ -81,6 +82,17 @@ export function createWorkerStorageService(
       }
 
       return new Uint8Array(await data.arrayBuffer());
+    },
+    async removeTempObjects(paths) {
+      if (paths.length === 0) {
+        return;
+      }
+
+      const { error } = await client.storage.from("temp").remove(paths);
+
+      if (error) {
+        throw new Error(error.message);
+      }
     },
     async uploadVideo(input) {
       const storagePath = `${input.workspaceId}/renders/${input.videoRenderId}.mp4`;
@@ -234,6 +246,7 @@ type SupabaseStorageClient = {
       download(
         path: string,
       ): Promise<{ data: Blob | null; error: { message: string } | null }>;
+      remove(paths: string[]): Promise<{ error: { message: string } | null }>;
       upload(
         path: string,
         body: Blob | ArrayBuffer | Uint8Array,

@@ -1,6 +1,10 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { google } from "googleapis";
 import type { Tables, TablesInsert } from "@/lib/database.types";
+import {
+  effectiveBillingPlan,
+  getPlanLimits,
+} from "@/server/services/plan-limits.service";
 import type { SecretsService } from "@/server/services/secrets.service";
 import { normalizeYoutubeError } from "@/server/services/youtube/youtube.errors";
 import type {
@@ -14,6 +18,19 @@ export const youtubeScopes = [
   "https://www.googleapis.com/auth/youtube.readonly",
   "https://www.googleapis.com/auth/userinfo.email",
 ];
+
+export class YoutubeChannelCapacityError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "YoutubeChannelCapacityError";
+  }
+}
+
+export function isYoutubeChannelCapacityError(
+  error: unknown,
+): error is YoutubeChannelCapacityError {
+  return error instanceof YoutubeChannelCapacityError;
+}
 
 export type YoutubeConnectionRecord = Partial<Tables<"youtube_connections">> & {
   id: string;
@@ -34,7 +51,12 @@ export type YoutubeConnectionRepository = {
       | "workspace_id"
     >,
   ): Promise<YoutubeConnectionRecord>;
+  getBillingPlan(workspaceId: string): Promise<{
+    plan: string | null;
+    status: string | null;
+  } | null>;
   getDefaultChannelId(workspaceId: string): Promise<string | null>;
+  listChannelIds(workspaceId: string): Promise<string[]>;
   updateConnectionStatus(input: {
     connectionId: string;
     status: "connected" | "disconnected" | "expired" | "error";
@@ -110,6 +132,14 @@ export function createYoutubeOAuthService(input: {
         const tokens = await input.oauthClient.exchangeCodeForTokens(
           params.code,
         );
+        const channels = await input.oauthClient.listChannels(tokens);
+
+        await assertChannelCapacity({
+          channels,
+          repository: input.repository,
+          workspaceId: state.workspaceId,
+        });
+
         const connection = await input.repository.createConnection({
           encrypted_access_token: input.secrets.encrypt(tokens.accessToken),
           encrypted_refresh_token: input.secrets.encrypt(tokens.refreshToken),
@@ -121,9 +151,9 @@ export function createYoutubeOAuthService(input: {
             : null,
           workspace_id: state.workspaceId,
         });
-        const channels = await input.oauthClient.listChannels(tokens);
         const syncedChannels = await syncYoutubeChannels({
           channels,
+          checkCapacity: false,
           connectionId: connection.id,
           repository: input.repository,
           workspaceId: state.workspaceId,
@@ -141,6 +171,10 @@ export function createYoutubeOAuthService(input: {
           returnTo: state.returnTo,
         };
       } catch (error) {
+        if (isYoutubeChannelCapacityError(error)) {
+          throw error;
+        }
+
         throw normalizeYoutubeError(error);
       }
     },
@@ -149,13 +183,21 @@ export function createYoutubeOAuthService(input: {
 
 export async function syncYoutubeChannels(input: {
   channels: YoutubeChannel[];
+  checkCapacity?: boolean;
   connectionId: string;
   repository: Pick<
     YoutubeConnectionRepository,
-    "getDefaultChannelId" | "upsertChannel"
+    | "getBillingPlan"
+    | "getDefaultChannelId"
+    | "listChannelIds"
+    | "upsertChannel"
   >;
   workspaceId: string;
 }) {
+  if (input.checkCapacity !== false) {
+    await assertChannelCapacity(input);
+  }
+
   const synced = [];
   const now = new Date().toISOString();
   const defaultChannelId = await input.repository.getDefaultChannelId(
@@ -181,6 +223,34 @@ export async function syncYoutubeChannels(input: {
   }
 
   return synced;
+}
+
+async function assertChannelCapacity(input: {
+  channels: YoutubeChannel[];
+  repository: Pick<
+    YoutubeConnectionRepository,
+    "getBillingPlan" | "listChannelIds"
+  >;
+  workspaceId: string;
+}) {
+  const [billing, existingChannelIds] = await Promise.all([
+    input.repository.getBillingPlan(input.workspaceId),
+    input.repository.listChannelIds(input.workspaceId),
+  ]);
+  const plan = effectiveBillingPlan(billing?.plan, billing?.status);
+  const limit = getPlanLimits(plan).youtubeChannels;
+  const known = new Set(existingChannelIds);
+  const newChannels = input.channels.filter(
+    (channel) => !known.has(channel.youtubeChannelId),
+  );
+
+  if (existingChannelIds.length + newChannels.length > limit) {
+    throw new YoutubeChannelCapacityError(
+      `Your ${plan} plan allows ${limit} YouTube ${
+        limit === 1 ? "channel" : "channels"
+      }. Disconnect a channel or upgrade to connect more.`,
+    );
+  }
 }
 
 export function createOAuthStateToken(

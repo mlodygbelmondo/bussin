@@ -2,16 +2,38 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Database,
   Json,
+  Tables,
   TablesInsert,
-  TablesUpdate,
 } from "@/lib/database.types";
 import type { GenerationRequestRepository } from "@/server/services/generation-request.service";
+import { effectiveBillingPlan } from "@/server/services/plan-limits.service";
 import {
   createUsageService,
+  getCurrentUsagePeriod,
   type UsageRepository,
 } from "@/server/services/usage.service";
 
 type Supabase = SupabaseClient<Database>;
+
+type IncrementUsageCounterRpcArgs = {
+  connected_channels_delta?: number;
+  generated_tracks_delta?: number;
+  scheduled_uploads_delta?: number;
+  target_period_end: string;
+  target_period_start: string;
+  target_workspace_id: string;
+  uploaded_videos_delta?: number;
+};
+
+type IncrementUsageCounterRpcClient = {
+  rpc(
+    fn: "increment_usage_counter",
+    args: IncrementUsageCounterRpcArgs,
+  ): Promise<{
+    data: Tables<"usage_counters"> | null;
+    error: { message: string } | null;
+  }>;
+};
 
 export function createGenerationRepository(
   supabase: Supabase,
@@ -86,11 +108,12 @@ export function createGenerationRepository(
       return (count ?? 0) > 0;
     },
     async getUsageSummary(workspaceId) {
+      const period = getCurrentUsagePeriod();
       const [subscriptionResult, usageResult, channelsResult] =
         await Promise.all([
           supabase
             .from("subscriptions")
-            .select("plan")
+            .select("plan, status")
             .eq("workspace_id", workspaceId)
             .maybeSingle(),
           supabase
@@ -99,8 +122,8 @@ export function createGenerationRepository(
               "generated_tracks_count, uploaded_videos_count, scheduled_uploads_count",
             )
             .eq("workspace_id", workspaceId)
-            .order("period_start", { ascending: false })
-            .limit(1)
+            .eq("period_start", period.periodStart)
+            .eq("period_end", period.periodEnd)
             .maybeSingle(),
           supabase
             .from("youtube_channels")
@@ -115,7 +138,10 @@ export function createGenerationRepository(
       }
 
       return {
-        currentPlan: subscriptionResult.data?.plan ?? "trial",
+        currentPlan: effectiveBillingPlan(
+          subscriptionResult.data?.plan,
+          subscriptionResult.data?.status,
+        ),
         monthlyGenerationRequests:
           usageResult.data?.generated_tracks_count ?? 0,
         monthlyUploads: usageResult.data?.uploaded_videos_count ?? 0,
@@ -136,7 +162,7 @@ export function createUsageRepository(supabase: Supabase): UsageRepository {
     async getCurrentPlan(workspaceId) {
       const { data, error } = await supabase
         .from("subscriptions")
-        .select("plan")
+        .select("plan, status")
         .eq("workspace_id", workspaceId)
         .maybeSingle();
 
@@ -144,7 +170,7 @@ export function createUsageRepository(supabase: Supabase): UsageRepository {
         throw new Error(error.message);
       }
 
-      return data?.plan ?? null;
+      return data ? effectiveBillingPlan(data.plan, data.status) : null;
     },
     async getUsageCounter(input) {
       const { data, error } = await supabase
@@ -161,34 +187,24 @@ export function createUsageRepository(supabase: Supabase): UsageRepository {
 
       return data;
     },
-    async upsertUsageCounter(input: TablesInsert<"usage_counters">) {
-      const { data, error } = await supabase
-        .from("usage_counters")
-        .upsert(input, {
-          onConflict: "workspace_id,period_start,period_end",
-        })
-        .select("*")
-        .single();
+    async incrementUsageCounter(input) {
+      const rpcClient = supabase as unknown as IncrementUsageCounterRpcClient;
+      const { data, error } = await rpcClient.rpc("increment_usage_counter", {
+        connected_channels_delta: input.deltas.connectedChannels ?? 0,
+        generated_tracks_delta: input.deltas.generatedTracks ?? 0,
+        scheduled_uploads_delta: input.deltas.scheduledUploads ?? 0,
+        target_period_end: input.periodEnd,
+        target_period_start: input.periodStart,
+        target_workspace_id: input.workspaceId,
+        uploaded_videos_delta: input.deltas.uploadedVideos ?? 0,
+      });
 
       if (error) {
         throw new Error(error.message);
       }
 
-      return data;
-    },
-    async updateUsageCounter(input: {
-      id: string;
-      values: TablesUpdate<"usage_counters">;
-    }) {
-      const { data, error } = await supabase
-        .from("usage_counters")
-        .update(input.values)
-        .eq("id", input.id)
-        .select("*")
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
+      if (!data) {
+        throw new Error("increment_usage_counter returned no usage counter.");
       }
 
       return data;
