@@ -3,12 +3,18 @@
 import { redirect } from "next/navigation";
 import { isMockMode } from "@/lib/app-config";
 import { env } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import {
+  createAccountProvisioningService,
+  createSupabaseAccountProvisioningRepository,
+} from "@/server/services/account-provisioning.service";
 
 const DEFAULT_AUTH_REDIRECT = "/dashboard";
 const FORGOT_PASSWORD_SENT_PATH = "/forgot-password?sent=1";
 const RESET_LINK_ERROR =
   "This reset link is invalid or has expired. Please request a new one.";
+const ACCOUNT_SETUP_ERROR = "Could not finish account setup. Please try again.";
 
 export async function signIn(formData: FormData) {
   const next = safeRedirectPath(formData.get("next"));
@@ -20,10 +26,22 @@ export async function signIn(formData: FormData) {
   const supabase = await createClient();
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
   if (error) {
     redirect(authPathWithState("/login", error.message, next));
+  }
+
+  try {
+    await ensureUserAccountProvisioned({
+      email: data.user?.email ?? email,
+      userId: data.user?.id,
+    });
+  } catch {
+    redirect(authPathWithState("/login", ACCOUNT_SETUP_ERROR, next));
   }
 
   redirect(next);
@@ -38,11 +56,30 @@ export async function signUp(formData: FormData) {
 
   const supabase = await createClient();
   const email = String(formData.get("email") ?? "");
+  const fullName = String(formData.get("fullName") ?? "");
   const password = String(formData.get("password") ?? "");
-  const { error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    options: {
+      data: {
+        full_name: fullName || undefined,
+      },
+    },
+    password,
+  });
 
   if (error) {
     redirect(authPathWithState("/signup", error.message, next));
+  }
+
+  try {
+    await ensureUserAccountProvisioned({
+      email: data.user?.email ?? email,
+      fullName,
+      userId: data.user?.id,
+    });
+  } catch {
+    redirect(authPathWithState("/signup", ACCOUNT_SETUP_ERROR, next));
   }
 
   redirect(next);
@@ -147,6 +184,26 @@ function resetPasswordPathWithState(error: string, code?: string) {
 
 function appUrl(path: string) {
   return new URL(path, env.NEXT_PUBLIC_APP_URL).toString();
+}
+
+async function ensureUserAccountProvisioned(input: {
+  email: string | null | undefined;
+  fullName?: string | null;
+  userId: string | null | undefined;
+}) {
+  if (!input.userId) {
+    throw new Error("Authenticated user not found after sign in.");
+  }
+
+  const service = createAccountProvisioningService(
+    createSupabaseAccountProvisioningRepository(createAdminClient()),
+  );
+
+  await service.ensureUserWorkspace({
+    email: input.email,
+    fullName: input.fullName,
+    userId: input.userId,
+  });
 }
 
 function validatePassword(password: string, confirmPassword: string) {

@@ -8,6 +8,10 @@ const migrationPath = join(
   process.cwd(),
   "supabase/migrations/20260501053000_workspace_settings.sql",
 );
+const grantsMigrationPath = join(
+  process.cwd(),
+  "supabase/migrations/20260703010000_restore_workspace_settings_grants.sql",
+);
 
 describe("workspace settings migration", () => {
   it("adds workspace-scoped settings with RLS policies", async () => {
@@ -41,5 +45,16 @@ describe("workspace settings migration", () => {
       /foreign key \(workspace_id, default_image_asset_id\)\s+references public\.image_assets\(workspace_id, id\)/,
     );
     expect(migration).toContain("on delete set null (default_image_asset_id)");
+  });
+
+  it("restores table grants required by workspace settings RLS policies", async () => {
+    const migration = await readFile(grantsMigrationPath, "utf8");
+
+    expect(migration).toContain(
+      "grant select, insert, update, delete\non table public.workspace_settings\nto authenticated;",
+    );
+    expect(migration).toContain(
+      "grant all\non table public.workspace_settings\nto service_role;",
+    );
   });
 });

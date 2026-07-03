@@ -15,6 +15,9 @@ import {
   type YoutubeConnectionRepository,
 } from "@/server/services/youtube/youtube-oauth.service";
 
+const SAFE_YOUTUBE_CONNECTION_SELECT =
+  "id, workspace_id, provider_account_email, token_expires_at, scopes, status, created_at, updated_at";
+
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
 
@@ -96,7 +99,7 @@ function createRouteYoutubeRepository(
       const { data, error } = await supabase
         .from("youtube_connections")
         .insert(input)
-        .select("*")
+        .select(SAFE_YOUTUBE_CONNECTION_SELECT)
         .single();
 
       if (error) {
@@ -151,7 +154,7 @@ function createRouteYoutubeRepository(
         .update({ status: input.status })
         .eq("workspace_id", input.workspaceId)
         .eq("id", input.connectionId)
-        .select("*")
+        .select(SAFE_YOUTUBE_CONNECTION_SELECT)
         .single();
 
       if (error) {

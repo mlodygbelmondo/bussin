@@ -1,7 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requestPasswordReset, updatePassword } from "@/app/auth/actions";
+import {
+  requestPasswordReset,
+  signIn,
+  signUp,
+  updatePassword,
+} from "@/app/auth/actions";
 
-const { createClientMock, redirectMock, supabaseMock } = vi.hoisted(() => {
+const {
+  adminClientMock,
+  createAccountProvisioningServiceMock,
+  createAdminClientMock,
+  createClientMock,
+  createSupabaseAccountProvisioningRepositoryMock,
+  ensureUserWorkspaceMock,
+  redirectMock,
+  supabaseMock,
+} = vi.hoisted(() => {
   const supabaseMock = {
     auth: {
       exchangeCodeForSession: vi.fn(),
@@ -15,7 +29,12 @@ const { createClientMock, redirectMock, supabaseMock } = vi.hoisted(() => {
   };
 
   return {
+    adminClientMock: {},
+    createAccountProvisioningServiceMock: vi.fn(),
+    createAdminClientMock: vi.fn(),
     createClientMock: vi.fn(),
+    createSupabaseAccountProvisioningRepositoryMock: vi.fn(),
+    ensureUserWorkspaceMock: vi.fn(),
     redirectMock: vi.fn((url: string) => {
       throw Object.assign(new Error("NEXT_REDIRECT"), {
         digest: `NEXT_REDIRECT;replace;${url};false`,
@@ -43,23 +62,89 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: createClientMock,
 }));
 
-describe("auth password reset actions", () => {
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: createAdminClientMock,
+}));
+
+vi.mock("@/server/services/account-provisioning.service", () => ({
+  createAccountProvisioningService: createAccountProvisioningServiceMock,
+  createSupabaseAccountProvisioningRepository:
+    createSupabaseAccountProvisioningRepositoryMock,
+}));
+
+describe("auth sign in and sign up actions", () => {
   beforeEach(() => {
-    createClientMock.mockReset();
-    createClientMock.mockResolvedValue(supabaseMock);
-    redirectMock.mockClear();
+    resetMocks();
+  });
 
-    for (const mock of Object.values(supabaseMock.auth)) {
-      mock.mockReset();
-    }
-
-    supabaseMock.auth.exchangeCodeForSession.mockResolvedValue({ error: null });
-    supabaseMock.auth.getUser.mockResolvedValue({
-      data: { user: { id: "user_1" } },
+  it("provisions the account workspace after sign in", async () => {
+    supabaseMock.auth.signInWithPassword.mockResolvedValue({
+      data: {
+        user: {
+          email: "producer@example.com",
+          id: "user_1",
+        },
+      },
       error: null,
     });
-    supabaseMock.auth.resetPasswordForEmail.mockResolvedValue({ error: null });
-    supabaseMock.auth.updateUser.mockResolvedValue({ error: null });
+
+    const formData = new FormData();
+    formData.set("email", "producer@example.com");
+    formData.set("password", "Password1");
+
+    const redirectDigest = await captureRedirect(signIn(formData));
+
+    expect(redirectDigest).toContain("/dashboard");
+    expect(supabaseMock.auth.signInWithPassword).toHaveBeenCalledWith({
+      email: "producer@example.com",
+      password: "Password1",
+    });
+    expect(ensureUserWorkspaceMock).toHaveBeenCalledWith({
+      email: "producer@example.com",
+      fullName: undefined,
+      userId: "user_1",
+    });
+  });
+
+  it("stores profile metadata and provisions the workspace after sign up", async () => {
+    supabaseMock.auth.signUp.mockResolvedValue({
+      data: {
+        user: {
+          email: "producer@example.com",
+          id: "user_1",
+        },
+      },
+      error: null,
+    });
+
+    const formData = new FormData();
+    formData.set("email", "producer@example.com");
+    formData.set("fullName", "Producer One");
+    formData.set("password", "Password1");
+
+    const redirectDigest = await captureRedirect(signUp(formData));
+
+    expect(redirectDigest).toContain("/dashboard");
+    expect(supabaseMock.auth.signUp).toHaveBeenCalledWith({
+      email: "producer@example.com",
+      options: {
+        data: {
+          full_name: "Producer One",
+        },
+      },
+      password: "Password1",
+    });
+    expect(ensureUserWorkspaceMock).toHaveBeenCalledWith({
+      email: "producer@example.com",
+      fullName: "Producer One",
+      userId: "user_1",
+    });
+  });
+});
+
+describe("auth password reset actions", () => {
+  beforeEach(() => {
+    resetMocks();
   });
 
   it("shows the same forgot-password confirmation even when Supabase rejects the reset request", async () => {
@@ -170,6 +255,38 @@ describe("auth password reset actions", () => {
     expect(supabaseMock.auth.updateUser).not.toHaveBeenCalled();
   });
 });
+
+function resetMocks() {
+  createClientMock.mockReset();
+  createClientMock.mockResolvedValue(supabaseMock);
+  createAdminClientMock.mockReset();
+  createAdminClientMock.mockReturnValue(adminClientMock);
+  createSupabaseAccountProvisioningRepositoryMock.mockReset();
+  createSupabaseAccountProvisioningRepositoryMock.mockReturnValue({
+    repository: "account-provisioning",
+  });
+  createAccountProvisioningServiceMock.mockReset();
+  createAccountProvisioningServiceMock.mockReturnValue({
+    ensureUserWorkspace: ensureUserWorkspaceMock,
+  });
+  ensureUserWorkspaceMock.mockReset();
+  ensureUserWorkspaceMock.mockResolvedValue({
+    workspaceId: "11111111-1111-4111-8111-111111111111",
+  });
+  redirectMock.mockClear();
+
+  for (const mock of Object.values(supabaseMock.auth)) {
+    mock.mockReset();
+  }
+
+  supabaseMock.auth.exchangeCodeForSession.mockResolvedValue({ error: null });
+  supabaseMock.auth.getUser.mockResolvedValue({
+    data: { user: { id: "user_1" } },
+    error: null,
+  });
+  supabaseMock.auth.resetPasswordForEmail.mockResolvedValue({ error: null });
+  supabaseMock.auth.updateUser.mockResolvedValue({ error: null });
+}
 
 async function captureRedirect(promise: Promise<unknown>) {
   try {

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isMockMode } from "@/lib/app-config";
 import { env } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { createYouTubeOAuthClient } from "@/lib/integrations/youtube";
 import {
@@ -18,9 +19,16 @@ import {
 } from "@/modules/integrations/youtube/youtube-oauth.routes";
 import { createSecretsService } from "@/server/services/secrets.service";
 import {
+  createAccountProvisioningService,
+  createSupabaseAccountProvisioningRepository,
+} from "@/server/services/account-provisioning.service";
+import {
   createYoutubeOAuthService,
   type YoutubeConnectionRepository,
 } from "@/server/services/youtube/youtube-oauth.service";
+
+const SAFE_SUNO_CONNECTION_SELECT =
+  "id, workspace_id, label, status, credits_left, monthly_limit, monthly_usage, last_checked_at, last_error, created_at, updated_at";
 
 async function requireWorkspace() {
   const supabase = await createClient();
@@ -44,7 +52,15 @@ async function requireWorkspace() {
   }
 
   if (!data) {
-    throw new Error("Workspace not found.");
+    const provisioning = createAccountProvisioningService(
+      createSupabaseAccountProvisioningRepository(createAdminClient()),
+    );
+    const { workspaceId } = await provisioning.ensureUserWorkspace({
+      email: user.email,
+      userId: user.id,
+    });
+
+    return { supabase, user, workspaceId };
   }
 
   return { supabase, user, workspaceId: data.workspace_id };
@@ -218,7 +234,7 @@ function createSunoRepository(
       const { data, error } = await supabase
         .from("suno_connections")
         .insert(input)
-        .select("*")
+        .select(SAFE_SUNO_CONNECTION_SELECT)
         .single();
 
       if (error) {
@@ -230,7 +246,7 @@ function createSunoRepository(
     async listConnections(workspaceId) {
       const { data, error } = await supabase
         .from("suno_connections")
-        .select("*")
+        .select(SAFE_SUNO_CONNECTION_SELECT)
         .eq("workspace_id", workspaceId)
         .order("created_at", { ascending: false });
 
@@ -246,7 +262,7 @@ function createSunoRepository(
         .update(input.values)
         .eq("workspace_id", input.workspaceId)
         .eq("id", input.connectionId)
-        .select("*")
+        .select(SAFE_SUNO_CONNECTION_SELECT)
         .single();
 
       if (error) {
