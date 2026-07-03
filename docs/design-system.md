@@ -11,13 +11,16 @@ radius that is not here, the system changes first, not the screen.
    Cyan/blue (`--info`) appears only in informational state chips and links.
 2. **State colors mean state.** `--success`, `--warning`, `--danger`,
    `--info` mark job/track status and feedback. Never use them decoratively.
-3. **Borders, not shadows.** Surfaces are flat: `--panel`/`--card` fill with
-   a 1px `--line`/`--border` border. No glassmorphism, no glows, no inset
-   highlights, no drop shadows on resting elements.
-4. **No gradients, no textures.** No background grids, waveform art, or
-   gradient buttons. Imagery comes from real content (cover thumbnails).
-5. **Typography does the hierarchy.** Geist Sans; weight and the type scale
-   create emphasis, not extra colors.
+3. **Borders before shadows.** Surfaces are flat: `--panel`/`--card` fill with
+   a 1px `--line`/`--border` border. Elevation is reserved for floating
+   surfaces via `--shadow-elevated` and the hero prompt focus glow.
+4. **One ambient signature.** Aurora ambient gradients are permitted only via
+   the shared `<Aurora />` component as hero or empty-state backdrops — never
+   on buttons, cards, borders, or text. No background grids or textures.
+5. **Typography does the hierarchy.** Bricolage Grotesque (`--font-display`)
+   is only for h1/h2-level headlines and the wordmark. Geist Sans is for all
+   body/UI text; Geist Mono is for numeric, duration, counter, and timestamp
+   values.
 
 ## Tokens
 
@@ -47,16 +50,20 @@ focus rings (3px, 35% alpha — already built into primitives).
 `--secondary`/`--muted` for neutral fills; `--destructive`/`--danger`,
 `--success`, `--warning`, `--info` for state only.
 
+Aurora colors (`--aurora-1`, `--aurora-2`, `--aurora-3`) are backdrop-only and
+must be used through `<Aurora />`.
+
 ### Radius
 
-`--radius` = 0.5rem. Use `rounded-md`/`rounded-lg` from the theme scale.
+`--radius` = 0.75rem. Use `rounded-md`/`rounded-lg` from the theme scale.
 Avatars and dots may be `rounded-full`. Nothing else.
 
 ### Spacing & type
 
 Tailwind defaults (4px base). Type scale in practice: `text-xs` meta,
-`text-sm` body, `text-base` inputs, `text-lg`–`text-2xl` headings. `font-mono`
-(Geist Mono) only for durations, counters, and timestamps.
+`text-sm` body, `text-base` inputs, `text-lg`–`text-2xl` headings. Use
+`font-display` only for h1/h2-level headlines and the brand wordmark; use
+`font-mono` only for durations, counters, and timestamps.
 
 ## Components
 

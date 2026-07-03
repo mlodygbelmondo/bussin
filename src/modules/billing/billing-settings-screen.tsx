@@ -11,12 +11,18 @@ import {
   SlidersHorizontal,
   Sparkles,
   UploadCloud,
-  WandSparkles,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { DashboardTopBar } from "@/components/common/dashboard-top-bar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
   openCustomerPortalAction,
@@ -60,11 +66,11 @@ export function BillingSettingsScreen({
 
   return (
     <main
-      className="min-h-[100dvh] bg-[#07101f] text-foreground"
+      className="min-h-[100dvh] bg-background text-foreground"
       data-testid={screenTestId}
     >
       <TopBar />
-      <div className="dashboard-grid mx-auto grid max-w-[1536px] gap-5 px-4 py-4 lg:px-9">
+      <div className="mx-auto grid max-w-[1120px] gap-5 px-4 py-6 lg:px-9">
         <PageHeader activeRoute={activeRoute} data={data} />
         <WorkspaceNav activeRoute={activeRoute} />
         {activeRoute === "billing" ? (
@@ -92,28 +98,28 @@ function PageHeader({
   const title = activeRoute === "billing" ? "Billing" : "Workspace settings";
   const description =
     activeRoute === "billing"
-      ? "Your subscription, usage limits, invoices, and upgrade path in one place."
-      : "Defaults that carry into generation, rendering, scheduling, and YouTube publishing.";
+      ? "Your plan, usage, and billing controls in one quiet place."
+      : "Simple defaults that save time whenever you create or publish.";
 
   return (
     <header className="flex flex-col gap-4 pt-2 lg:flex-row lg:items-end lg:justify-between">
-      <div className="max-w-3xl border-l border-white/20 pl-3">
+      <div className="max-w-3xl">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold text-white sm:text-3xl">
+          <h1 className="font-display text-2xl font-semibold text-foreground sm:text-3xl">
             {title}
           </h1>
-          <Badge className={status.badgeClass}>{status.label}</Badge>
+          <Badge variant={status.variant}>{status.label}</Badge>
         </div>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
           {description}
         </p>
       </div>
-      <div className="grid gap-1 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:min-w-[260px]">
-        <span className="text-slate-500">Workspace plan</span>
-        <span className="font-medium text-white">
+      <div className="grid gap-1 rounded-xl border border-line bg-card/80 px-4 py-3 text-sm sm:min-w-[260px]">
+        <span className="text-muted-foreground">Workspace plan</span>
+        <span className="font-medium text-foreground">
           {data.planDisplayName} workspace
           {data.currentPeriodEnd ? (
-            <span className="text-slate-500">
+            <span className="text-muted-foreground">
               {" "}
               renews {formatDate(data.currentPeriodEnd)}
             </span>
@@ -141,8 +147,8 @@ function WorkspaceNav({
             className={cn(
               "group flex items-center gap-4 rounded-lg border p-4 transition duration-200",
               isActive
-                ? "border-violet-300/35 bg-violet-500/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_16px_46px_rgba(91,33,182,0.2)]"
-                : "border-white/10 bg-white/[0.035] text-slate-300 hover:border-white/20 hover:bg-white/[0.06]",
+                ? "border-primary bg-accent text-foreground"
+                : "border-line bg-card text-foreground hover:bg-accent/50",
             )}
             href={item.href}
             key={item.route}
@@ -151,15 +157,15 @@ function WorkspaceNav({
               className={cn(
                 "grid size-10 shrink-0 place-items-center rounded-lg border",
                 isActive
-                  ? "border-violet-200/25 bg-violet-400/15 text-violet-100"
-                  : "border-white/10 bg-slate-950/30 text-slate-400 group-hover:text-slate-200",
+                  ? "border-primary bg-secondary text-primary"
+                  : "border-line bg-secondary text-muted-foreground group-hover:text-foreground",
               )}
             >
               <Icon className="size-5" />
             </span>
             <span className="min-w-0">
               <span className="block text-sm font-semibold">{item.label}</span>
-              <span className="mt-0.5 block text-xs text-slate-500">
+              <span className="mt-0.5 block text-xs text-muted-foreground">
                 {item.description}
               </span>
             </span>
@@ -205,48 +211,50 @@ function SettingsOverview({ data }: { data: BillingPageData }) {
 
   return (
     <div className="grid gap-5">
-      <section className="bussin-panel rounded-lg p-5">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center">
-          <div>
-            <p className="text-sm font-medium text-violet-200">
-              Current publishing defaults
-            </p>
-            <h2 className="mt-2 text-xl font-semibold text-white">
-              New work starts from these choices.
-            </h2>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">
-              These values prefill generation and upload flows. Change them here
-              once, then let every new release inherit the setup.
-            </p>
+      <Card className="rounded-xl border-line bg-card/80">
+        <CardContent>
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center">
+            <div>
+              <p className="text-sm font-medium text-primary">
+                Current publishing defaults
+              </p>
+              <h2 className="font-display mt-2 text-xl font-semibold text-foreground">
+                New work starts from these choices.
+              </h2>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+                These values prefill generation and upload flows. Change them
+                here once, then let every new release inherit the setup.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SettingsSummaryTile
+                icon={<UploadCloud className="size-4" />}
+                label="Default channel"
+                value={defaultChannel?.title ?? "No channel selected"}
+              />
+              <SettingsSummaryTile
+                icon={<ShieldCheck className="size-4" />}
+                label="Privacy"
+                value={capitalize(data.settings.defaultPrivacyStatus)}
+              />
+              <SettingsSummaryTile
+                icon={<Globe2 className="size-4" />}
+                label="Timezone"
+                value={formatTimezone(data.settings.timezone)}
+              />
+              <SettingsSummaryTile
+                icon={<ImageIcon className="size-4" />}
+                label="Default image"
+                value={
+                  defaultImage?.fileName ??
+                  defaultImage?.storagePath ??
+                  "No image selected"
+                }
+              />
+            </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <SettingsSummaryTile
-              icon={<UploadCloud className="size-4" />}
-              label="Default channel"
-              value={defaultChannel?.title ?? "No channel selected"}
-            />
-            <SettingsSummaryTile
-              icon={<ShieldCheck className="size-4" />}
-              label="Privacy"
-              value={capitalize(data.settings.defaultPrivacyStatus)}
-            />
-            <SettingsSummaryTile
-              icon={<Globe2 className="size-4" />}
-              label="Timezone"
-              value={formatTimezone(data.settings.timezone)}
-            />
-            <SettingsSummaryTile
-              icon={<ImageIcon className="size-4" />}
-              label="Default image"
-              value={
-                defaultImage?.fileName ??
-                defaultImage?.storagePath ??
-                "No image selected"
-              }
-            />
-          </div>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
       <BillingSettingsForm data={data} />
     </div>
   );
@@ -271,52 +279,43 @@ function PlanHero({
       : "Trial workspace";
 
   return (
-    <section className="bussin-panel relative min-h-[360px] overflow-hidden rounded-lg p-6 lg:p-7">
-      <div className="absolute inset-y-0 right-0 hidden w-[42%] overflow-hidden lg:block">
-        <div className="absolute top-10 right-12 size-44 rotate-[-8deg] rounded-[2rem] border border-violet-200/20 bg-gradient-to-br from-violet-500/35 via-slate-900 to-cyan-500/20 shadow-[0_28px_90px_rgba(88,28,255,0.38)]" />
-        <div className="absolute top-28 right-28 grid size-20 rotate-[-8deg] place-items-center rounded-2xl bg-slate-950/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_18px_46px_rgba(88,28,255,0.24)]">
-          <WandSparkles className="size-9 text-violet-200" />
-        </div>
-        <div className="absolute right-2 bottom-10 h-24 w-72 rounded-[50%] border border-cyan-300/20 bg-cyan-500/10 blur-sm" />
-      </div>
-
-      <div className="relative max-w-2xl">
+    <Card className="rounded-xl border-primary/50 bg-card/80 p-6">
+      <CardHeader>
         <div className="flex flex-wrap items-center gap-3">
-          <Badge className="border-violet-300/25 bg-violet-500/18 text-violet-100">
-            Current plan
-          </Badge>
+          <Badge>Current plan</Badge>
           {data.cancelAtPeriodEnd ? (
-            <Badge className="border-amber-300/20 bg-amber-500/15 text-amber-100">
-              Cancels at period end
-            </Badge>
+            <Badge variant="warning">Cancels at period end</Badge>
           ) : null}
         </div>
 
-        <h2 className="mt-6 text-3xl font-semibold text-white sm:text-4xl">
+        <CardTitle className="font-display mt-3 text-3xl font-bold sm:text-4xl">
           {data.planDisplayName} Plan
-        </h2>
-        <p className="mt-3 text-sm leading-6 text-slate-400">
+        </CardTitle>
+        <CardDescription>
           {isPaid
             ? `Billed monthly for $${data.monthlyPriceUsd}. Manage invoices and payment method through Stripe.`
             : "Trial includes enough quota to connect your first channel and test the publishing flow."}
-        </p>
-
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
         <div className="mt-8 grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.85fr)]">
-          <div className="rounded-lg border border-white/10 bg-slate-950/30 p-4">
+          <div className="rounded-lg border border-line bg-panel p-4">
             <div className="flex items-center justify-between gap-4">
-              <span className="text-sm text-slate-400">Primary usage</span>
+              <span className="text-sm text-muted-foreground">
+                Primary usage
+              </span>
               <span className={cn("text-xs font-medium", usageTone(percent))}>
                 {percent}% used
               </span>
             </div>
-            <p className="mt-3 font-mono text-3xl font-semibold text-white">
+            <p className="mt-3 font-mono text-3xl font-semibold text-foreground">
               {formatNumber(usage?.used ?? 0)}
-              <span className="text-sm font-normal text-slate-500">
+              <span className="text-sm font-normal text-muted-foreground">
                 {" "}
                 / {formatNumber(usage?.limit ?? 0)} {usage?.label ?? "credits"}
               </span>
             </p>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-950/80">
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-secondary">
               <div
                 className={cn("h-full rounded-full", usageBarClass(percent))}
                 data-testid="usage-bar"
@@ -325,12 +324,14 @@ function PlanHero({
             </div>
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
-            <span className="text-sm text-slate-400">Billing period</span>
-            <p className="mt-3 text-sm font-medium leading-6 text-white">
+          <div className="rounded-lg border border-line bg-panel p-4">
+            <span className="text-sm text-muted-foreground">
+              Billing period
+            </span>
+            <p className="mt-3 text-sm font-medium leading-6 text-foreground">
               {periodLabel}
             </p>
-            <p className="mt-2 text-xs leading-5 text-slate-500">
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
               Limits reset at the start of each billing period.
             </p>
           </div>
@@ -349,8 +350,8 @@ function PlanHero({
             <ExternalLink className="size-4" />
           </Button>
         </form>
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -360,29 +361,31 @@ function UsageCycleCard({
   usageMetrics: BillingUsageMetric[];
 }) {
   return (
-    <section className="bussin-panel rounded-lg p-5">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+    <Card className="rounded-xl border-line bg-card/80">
+      <CardHeader className="sm:grid-cols-[1fr_auto]">
         <div>
-          <h2 className="text-lg font-semibold text-white">Usage this cycle</h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <CardTitle className="font-display text-lg">
+            Usage this cycle
+          </CardTitle>
+          <CardDescription>
             The quota that matters for generation, publishing, channels, and
             scheduling.
-          </p>
+          </CardDescription>
         </div>
         <Badge variant="secondary">Current period</Badge>
-      </div>
+      </CardHeader>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+      <CardContent className="grid gap-3 sm:grid-cols-2">
         {usageMetrics.map((metric) => {
           const percent = toPercent(metric.used, metric.limit);
 
           return (
             <article
-              className="rounded-lg border border-white/10 bg-slate-950/25 p-4"
+              className="rounded-lg border border-line bg-panel p-4"
               key={metric.key}
             >
               <div className="flex items-center justify-between gap-3">
-                <span className="flex items-center gap-2 text-sm font-medium text-white">
+                <span className="flex items-center gap-2 text-sm font-medium text-foreground">
                   <MetricIcon metricKey={metric.key} />
                   {metric.label}
                 </span>
@@ -390,14 +393,14 @@ function UsageCycleCard({
                   {percent}%
                 </span>
               </div>
-              <p className="mt-4 font-mono text-2xl font-semibold text-white">
+              <p className="mt-4 font-mono text-2xl font-semibold text-foreground">
                 {formatNumber(metric.used)}
-                <span className="text-sm font-normal text-slate-500">
+                <span className="text-sm font-normal text-muted-foreground">
                   {" "}
                   / {formatNumber(metric.limit)}
                 </span>
               </p>
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-950/75">
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-secondary">
                 <div
                   className={cn("h-full rounded-full", usageBarClass(percent))}
                   style={{ width: `${percent}%` }}
@@ -406,13 +409,15 @@ function UsageCycleCard({
             </article>
           );
         })}
-      </div>
+      </CardContent>
 
-      <Button className="mt-5" type="button" variant="outline">
-        <BarChart3 className="size-4" />
-        View full usage
-      </Button>
-    </section>
+      <CardContent>
+        <Button type="button" variant="outline">
+          <BarChart3 className="size-4" />
+          View full usage
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -429,23 +434,27 @@ function PlanLimitsCard({ data }: { data: BillingPageData }) {
   ];
 
   return (
-    <section className="bussin-panel rounded-lg p-5">
-      <h2 className="text-lg font-semibold text-white">Plan limits</h2>
-      <p className="mt-1 text-sm text-slate-400">
-        Hard limits enforced before generation and publishing jobs are queued.
-      </p>
-      <dl className="mt-5 divide-y divide-white/10">
-        {rows.map(([label, value]) => (
-          <div
-            className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 py-3 text-sm"
-            key={label}
-          >
-            <dt className="text-slate-400">{label}</dt>
-            <dd className="font-mono font-medium text-slate-100">{value}</dd>
-          </div>
-        ))}
-      </dl>
-    </section>
+    <Card className="rounded-xl border-line bg-card/80">
+      <CardHeader>
+        <CardTitle className="font-display text-lg">Plan limits</CardTitle>
+        <CardDescription>
+          Your current workspace allowance for creating and publishing.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <dl className="divide-y divide-line">
+          {rows.map(([label, value]) => (
+            <div
+              className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 py-3 text-sm"
+              key={label}
+            >
+              <dt className="text-muted-foreground">{label}</dt>
+              <dd className="font-mono font-medium text-foreground">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -459,18 +468,18 @@ function BillingPortalCard({
   const hasPaidPlan = data.plan !== "trial";
 
   return (
-    <section className="bussin-panel flex flex-col rounded-lg p-5">
-      <div className="flex items-center justify-between gap-4">
+    <Card className="flex flex-col rounded-xl border-line bg-card/80">
+      <CardHeader className="flex-row items-center justify-between gap-4 space-y-0">
         <div>
-          <h2 className="text-lg font-semibold text-white">Stripe billing</h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <CardTitle className="font-display text-lg">Stripe billing</CardTitle>
+          <CardDescription>
             Payment method, invoices, receipts, and subscription changes.
-          </p>
+          </CardDescription>
         </div>
-        <span className="text-xl font-bold text-violet-300">stripe</span>
-      </div>
+        <span className="text-xl font-bold text-primary">stripe</span>
+      </CardHeader>
 
-      <div className="mt-5 grid gap-3">
+      <CardContent className="grid gap-3">
         {hasPaidPlan ? (
           <form action={openCustomerPortalAction}>
             <input name="workspace_id" type="hidden" value={data.workspaceId} />
@@ -495,21 +504,25 @@ function BillingPortalCard({
             </Button>
           </form>
         ) : null}
-      </div>
+      </CardContent>
 
-      <div className="mt-6 rounded-lg border border-white/10 bg-slate-950/25 p-4">
-        <p className="text-sm font-medium text-white">What stays in Bussin</p>
-        <p className="mt-2 text-sm leading-6 text-slate-400">
-          Plan state and quota are synced from Stripe webhooks. Card details
-          stay inside Stripe.
+      <CardContent>
+        <div className="rounded-lg border border-line bg-panel p-4">
+          <p className="text-sm font-medium text-foreground">
+            What stays in Bussin
+          </p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Plan state and quota are synced from Stripe webhooks. Card details
+            stay inside Stripe.
+          </p>
+        </div>
+
+        <p className="mt-auto flex items-start gap-2 pt-6 text-xs leading-5 text-muted-foreground">
+          <LockKeyhole className="mt-0.5 size-4" />
+          Secure payments powered by Stripe. Your payment details are encrypted.
         </p>
-      </div>
-
-      <p className="mt-auto flex items-start gap-2 pt-6 text-xs leading-5 text-slate-500">
-        <LockKeyhole className="mt-0.5 size-4 text-slate-400" />
-        Secure payments powered by Stripe. Your payment details are encrypted.
-      </p>
-    </section>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -526,38 +539,40 @@ function UpgradeCard({
   );
 
   return (
-    <section className="bussin-panel rounded-lg p-5">
-      <div className="flex items-start gap-3">
-        <span className="grid size-10 place-items-center rounded-lg border border-cyan-200/20 bg-cyan-400/10 text-cyan-100">
-          <Sparkles className="size-5" />
-        </span>
-        <div>
-          <h2 className="text-lg font-semibold text-white">
-            Next sensible upgrade
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-slate-400">
-            {upgrade.displayName} adds room before you hit publishing or
-            generation ceilings.
+    <Card className="rounded-xl border-line bg-card/80">
+      <CardContent>
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 place-items-center rounded-lg border border-line bg-secondary text-primary">
+            <Sparkles className="size-5" />
+          </span>
+          <div>
+            <h2 className="font-display text-lg font-semibold text-foreground">
+              Next sensible upgrade
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              {upgrade.displayName} adds room before you hit publishing or
+              generation ceilings.
+            </p>
+          </div>
+        </div>
+        <div className="mt-5 rounded-lg border border-line bg-panel p-4">
+          <p className="text-sm text-muted-foreground">Monthly generations</p>
+          <p className="mt-2 font-mono text-2xl font-semibold text-foreground">
+            {formatNumber(currentGenerations)}
+            <span className="px-2 text-sm text-muted-foreground">to</span>
+            {nextGenerations?.match(/[\d,]+/)?.[0] ?? "more"}
           </p>
         </div>
-      </div>
-      <div className="mt-5 rounded-lg border border-white/10 bg-white/[0.035] p-4">
-        <p className="text-sm text-slate-400">Monthly generations</p>
-        <p className="mt-2 font-mono text-2xl font-semibold text-white">
-          {formatNumber(currentGenerations)}
-          <span className="px-2 text-sm text-slate-500">to</span>
-          {nextGenerations?.match(/[\d,]+/)?.[0] ?? "more"}
-        </p>
-      </div>
-      <form action={startCheckoutAction} className="mt-5">
-        <input name="workspace_id" type="hidden" value={data.workspaceId} />
-        <input name="plan" type="hidden" value={upgrade.plan} />
-        <Button className="w-full" type="submit" variant="outline">
-          Compare {upgrade.displayName}
-          <ExternalLink className="size-4" />
-        </Button>
-      </form>
-    </section>
+        <form action={startCheckoutAction} className="mt-5">
+          <input name="workspace_id" type="hidden" value={data.workspaceId} />
+          <input name="plan" type="hidden" value={upgrade.plan} />
+          <Button className="w-full" type="submit" variant="outline">
+            Compare {upgrade.displayName}
+            <ExternalLink className="size-4" />
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -571,18 +586,20 @@ function SettingsSummaryTile({
   value: string;
 }) {
   return (
-    <div className="grid min-h-[86px] gap-2 rounded-lg border border-white/10 bg-slate-950/25 p-4">
-      <span className="flex items-center gap-2 text-xs font-medium text-slate-500">
-        <span className="text-violet-200">{icon}</span>
+    <div className="grid min-h-[86px] gap-2 rounded-lg border border-line bg-panel p-4">
+      <span className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+        <span className="text-primary">{icon}</span>
         {label}
       </span>
-      <span className="truncate text-sm font-medium text-white">{value}</span>
+      <span className="truncate text-sm font-medium text-foreground">
+        {value}
+      </span>
     </div>
   );
 }
 
 function MetricIcon({ metricKey }: { metricKey: BillingUsageMetric["key"] }) {
-  const className = "size-4 text-violet-300";
+  const className = "size-4 text-primary";
 
   if (metricKey === "uploadedVideos") {
     return <UploadCloud className={className} />;
@@ -602,60 +619,60 @@ function MetricIcon({ metricKey }: { metricKey: BillingUsageMetric["key"] }) {
 function getSubscriptionStatus(data: BillingPageData) {
   if (data.cancelAtPeriodEnd) {
     return {
-      badgeClass: "border-amber-300/20 bg-amber-500/15 text-amber-100",
+      variant: "warning" as const,
       label: "Canceling",
     };
   }
 
   if (data.status === "past_due") {
     return {
-      badgeClass: "border-red-300/20 bg-red-500/15 text-red-100",
+      variant: "destructive" as const,
       label: "Past due",
     };
   }
 
   if (data.status === "canceled") {
     return {
-      badgeClass: "border-slate-300/15 bg-slate-500/15 text-slate-200",
+      variant: "outline" as const,
       label: "Canceled",
     };
   }
 
   if (data.plan === "trial") {
     return {
-      badgeClass: "border-cyan-300/20 bg-cyan-500/15 text-cyan-100",
+      variant: "info" as const,
       label: "Trial",
     };
   }
 
   return {
-    badgeClass: "border-emerald-300/20 bg-emerald-500/15 text-emerald-100",
+    variant: "success" as const,
     label: "Active",
   };
 }
 
 function usageTone(percent: number) {
   if (percent >= 100) {
-    return "text-red-300";
+    return "text-danger";
   }
 
   if (percent >= 80) {
-    return "text-amber-300";
+    return "text-warning";
   }
 
-  return "text-emerald-300";
+  return "text-success";
 }
 
 function usageBarClass(percent: number) {
   if (percent >= 100) {
-    return "bg-gradient-to-r from-red-500 to-rose-300";
+    return "bg-danger";
   }
 
   if (percent >= 80) {
-    return "bg-gradient-to-r from-amber-500 to-orange-300";
+    return "bg-warning";
   }
 
-  return "bg-gradient-to-r from-violet-500 to-cyan-300";
+  return "bg-primary";
 }
 
 function toPercent(used: number, limit: number) {

@@ -3,6 +3,7 @@ import {
   deriveRetryTarget,
   deriveTrackStatus,
 } from "@/modules/feed/feed.queries";
+import { getTrackStatusPresentation } from "@/modules/feed/feed-cards";
 
 type TrackInput = Parameters<typeof deriveTrackStatus>[0]["track"];
 type RenderInput = Parameters<typeof deriveTrackStatus>[0]["render"];
@@ -165,5 +166,40 @@ describe("deriveRetryTarget", () => {
     expect(
       deriveRetryTarget({ render: null, track: track(), upload: null }),
     ).toBeNull();
+  });
+});
+
+describe("getTrackStatusPresentation", () => {
+  it("maps feed statuses to friendly labels", () => {
+    expect(getTrackStatusPresentation({ status: "generating" }).label).toBe(
+      "Composing…",
+    );
+    expect(getTrackStatusPresentation({ status: "preview_ready" }).label).toBe(
+      "Ready to publish",
+    );
+    expect(getTrackStatusPresentation({ status: "rendering" }).label).toBe(
+      "Making your video…",
+    );
+    expect(getTrackStatusPresentation({ status: "uploading" }).label).toBe(
+      "Publishing…",
+    );
+    expect(getTrackStatusPresentation({ status: "published" }).label).toBe(
+      "Live on YouTube",
+    );
+    expect(getTrackStatusPresentation({ status: "failed" }).label).toBe(
+      "Needs attention",
+    );
+    expect(getTrackStatusPresentation({ status: "discarded" }).label).toBe(
+      "Discarded",
+    );
+  });
+
+  it("includes the scheduled date in scheduled labels", () => {
+    expect(
+      getTrackStatusPresentation({
+        scheduledAt: "2026-06-13T18:00:00Z",
+        status: "scheduled",
+      }).label,
+    ).toContain("Scheduled for");
   });
 });

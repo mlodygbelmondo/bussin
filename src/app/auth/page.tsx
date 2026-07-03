@@ -1,10 +1,7 @@
 import {
-  Apple,
   AudioLines,
   CheckCircle2,
-  EyeOff,
   LifeBuoy,
-  LockKeyhole,
   Mail,
   PlayCircle,
   SquarePlay,
@@ -14,6 +11,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type React from "react";
 import { signIn, signUp } from "@/app/auth/actions";
+import {
+  PasswordField,
+  PendingPromptNotice,
+} from "@/app/auth/auth-client-fields";
+import { Aurora } from "@/components/common/aurora";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -57,7 +59,7 @@ export async function AuthScreen({
       <section className="mx-auto flex min-h-[100dvh] w-full max-w-[1200px] flex-col px-4 py-5 sm:px-6 lg:px-8">
         <header className="flex items-center justify-between gap-4">
           <Link
-            className="flex items-center gap-3 text-[26px] font-semibold tracking-normal"
+            className="font-display flex items-center gap-3 text-[26px] font-semibold tracking-normal"
             href="/"
           >
             <LogoMark />
@@ -98,9 +100,10 @@ export async function AuthScreen({
 
 function ValuePanel() {
   return (
-    <aside className="hidden xl:block">
-      <div>
-        <h1 className="max-w-[570px] text-[clamp(2.4rem,3vw,3.35rem)] leading-[1.16] font-medium tracking-normal">
+    <aside className="relative hidden overflow-hidden xl:block">
+      <Aurora />
+      <div className="relative">
+        <h1 className="font-display max-w-[570px] text-[clamp(2.4rem,3vw,3.35rem)] leading-[1.16] font-medium tracking-normal">
           Create. Preview.
           <br />
           Publish to{" "}
@@ -130,7 +133,7 @@ function ValuePanel() {
         </div>
       </div>
 
-      <div className="mt-10 max-w-[430px] rounded-lg border border-line bg-card p-5">
+      <div className="relative mt-10 max-w-[430px] rounded-lg border border-line bg-card p-5">
         <p className="text-sm leading-6 text-card-foreground">
           {APP_NAME} is my secret weapon for creating studio-quality
           instrumentals in minutes.
@@ -154,7 +157,7 @@ function AuthTab({
   return (
     <Link
       aria-current={active ? "page" : undefined}
-      className={`relative block border-b border-line px-4 pt-4 pb-3 text-center text-lg font-semibold transition-colors ${
+      className={`font-display relative block border-b border-line px-4 pt-4 pb-3 text-center text-lg font-semibold transition-colors ${
         active
           ? "text-primary"
           : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
@@ -189,19 +192,7 @@ function AuthForm({
     >
       <input name="next" type="hidden" value={next} />
 
-      <div className="grid grid-cols-2 gap-3">
-        <SocialButton label="Google" mark="G" />
-        <SocialButton
-          icon={<Apple className="size-5 fill-current" />}
-          label="Apple"
-        />
-      </div>
-
-      <div className="my-4 flex items-center gap-4 text-sm text-muted-foreground">
-        <span className="h-px flex-1 bg-line" />
-        or continue with email
-        <span className="h-px flex-1 bg-line" />
-      </div>
+      {isSignup ? <PendingPromptNotice /> : null}
 
       {error ? (
         <p
@@ -229,15 +220,10 @@ function AuthForm({
           placeholder="you@example.com"
           type="email"
         />
-        <Field
-          icon={<LockKeyhole className="size-4" />}
-          label="Password"
-          name="password"
+        <PasswordField
           placeholder={
             isSignup ? "Create a strong password" : "Enter your password"
           }
-          suffix={<EyeOff className="size-4" />}
-          type="password"
         />
       </div>
 
@@ -408,31 +394,5 @@ function SignInOptions() {
         Forgot password?
       </Link>
     </div>
-  );
-}
-
-function SocialButton({
-  icon,
-  label,
-  mark,
-}: {
-  icon?: React.ReactNode;
-  label: string;
-  mark?: string;
-}) {
-  return (
-    <Button
-      aria-label={`Continue with ${label}`}
-      className="h-11"
-      type="button"
-      variant="outline"
-    >
-      {mark ? (
-        <span className="text-lg leading-none font-bold">{mark}</span>
-      ) : (
-        icon
-      )}
-      {label}
-    </Button>
   );
 }

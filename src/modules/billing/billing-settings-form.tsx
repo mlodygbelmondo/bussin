@@ -11,6 +11,13 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import {
@@ -127,7 +134,7 @@ export function BillingSettingsForm({ data }: BillingSettingsFormProps) {
 
           {data.channels.length === 0 ? (
             <p
-              className="rounded-lg border border-violet-200/10 bg-slate-950/30 p-3 text-sm text-slate-400"
+              className="rounded-lg border border-line bg-panel p-3 text-sm text-muted-foreground"
               data-testid="empty-state"
             >
               Connect a YouTube channel before choosing a default destination.
@@ -235,7 +242,7 @@ export function BillingSettingsForm({ data }: BillingSettingsFormProps) {
           </div>
 
           {data.imageAssets.length === 0 ? (
-            <p className="rounded-lg border border-violet-200/10 bg-slate-950/30 p-3 text-sm text-slate-400">
+            <p className="rounded-lg border border-line bg-panel p-3 text-sm text-muted-foreground">
               Add image assets before selecting a default video image.
             </p>
           ) : null}
@@ -291,39 +298,43 @@ export function BillingSettingsForm({ data }: BillingSettingsFormProps) {
           </div>
         </SettingsPanel>
 
-        <section className="bussin-panel rounded-lg p-5">
-          <div className="flex items-start gap-3">
-            <span className="grid size-9 place-items-center rounded-lg border border-emerald-200/20 bg-emerald-400/10 text-emerald-100">
-              <CheckCircle2 className="size-5" />
-            </span>
-            <div>
-              <h2 className="font-semibold text-white">Workspace controls</h2>
-              <p className="mt-1 text-sm leading-6 text-slate-400">
-                Save once to update every default on this page.
-              </p>
+        <Card className="rounded-xl border-line bg-card/80">
+          <CardContent>
+            <div className="flex items-start gap-3">
+              <span className="grid size-9 place-items-center rounded-lg border border-line bg-secondary text-primary">
+                <CheckCircle2 className="size-5" />
+              </span>
+              <div>
+                <h2 className="font-display font-semibold text-foreground">
+                  Workspace controls
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  Save once to update every default on this page.
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="mt-5 grid gap-3">
-            <ReadOnlyPreference label="Analytics" value="Enabled" />
-            <ReadOnlyPreference label="Usage data" value="Standard" />
-          </div>
+            <div className="mt-5 grid gap-3">
+              <ReadOnlyPreference label="Analytics" value="Enabled" />
+              <ReadOnlyPreference label="Usage data" value="Standard" />
+            </div>
 
-          {state.message ? (
-            <p
-              className={cn(
-                "mt-5 rounded-lg border px-3 py-2 text-sm",
-                state.status === "success"
-                  ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100"
-                  : "border-red-300/20 bg-red-500/10 text-red-100",
-              )}
-            >
-              {state.message}
-            </p>
-          ) : null}
+            {state.message ? (
+              <p
+                className={cn(
+                  "mt-5 rounded-lg border px-3 py-2 text-sm",
+                  state.status === "success"
+                    ? "border-success/40 bg-success/10 text-success"
+                    : "border-danger/40 bg-danger/10 text-danger",
+                )}
+              >
+                {state.message}
+              </p>
+            ) : null}
 
-          <SaveButton pending={pending}>Save settings</SaveButton>
-        </section>
+            <SaveButton pending={pending}>Save settings</SaveButton>
+          </CardContent>
+        </Card>
       </aside>
     </form>
   );
@@ -341,20 +352,20 @@ function SettingsPanel({
   title: string;
 }) {
   return (
-    <section className="bussin-panel rounded-lg p-5">
-      <div className="mb-5 flex gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-violet-200/15 bg-violet-500/10 text-violet-200">
+    <Card className="rounded-xl border-line bg-card/80">
+      <CardHeader className="flex-row gap-3 space-y-0">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-line bg-secondary text-primary">
           {icon}
         </span>
         <div>
-          <h2 className="font-semibold text-white">{title}</h2>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
+          <CardTitle className="font-display">{title}</CardTitle>
+          <CardDescription className="mt-1 max-w-2xl">
             {description}
-          </p>
+          </CardDescription>
         </div>
-      </div>
-      <div className="grid gap-4">{children}</div>
-    </section>
+      </CardHeader>
+      <CardContent className="grid gap-4">{children}</CardContent>
+    </Card>
   );
 }
 
@@ -369,10 +380,12 @@ function Field({
 }) {
   return (
     <label className="grid gap-2 text-sm">
-      <span className="font-medium text-slate-200">{label}</span>
+      <span className="font-medium text-foreground">{label}</span>
       {children}
       {description ? (
-        <span className="text-xs leading-5 text-slate-500">{description}</span>
+        <span className="text-xs leading-5 text-muted-foreground">
+          {description}
+        </span>
       ) : null}
     </label>
   );
@@ -381,7 +394,7 @@ function Field({
 function Select(props: React.ComponentProps<"select">) {
   return (
     <select
-      className="h-10 min-w-0 rounded-lg border border-violet-200/15 bg-slate-950/40 px-3 text-sm text-slate-100 outline-none transition focus:border-violet-300/45 focus:ring-2 focus:ring-violet-500/20"
+      className="h-10 min-w-0 rounded-lg border border-border bg-input px-3 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/35"
       {...props}
     />
   );
@@ -399,17 +412,17 @@ function ToggleRow({
   name?: string;
 }) {
   return (
-    <label className="grid min-h-[72px] grid-cols-[1fr_auto] items-center gap-4 rounded-lg border border-white/10 bg-slate-950/25 p-3 text-sm">
+    <label className="grid min-h-[72px] grid-cols-[1fr_auto] items-center gap-4 rounded-lg border border-line bg-panel p-3 text-sm">
       <span>
-        <span className="block font-medium text-slate-200">{label}</span>
+        <span className="block font-medium text-foreground">{label}</span>
         {description ? (
-          <span className="mt-1 block text-xs leading-5 text-slate-500">
+          <span className="mt-1 block text-xs leading-5 text-muted-foreground">
             {description}
           </span>
         ) : null}
       </span>
       <input
-        className="toggle toggle-sm border-slate-600 bg-slate-700 checked:border-violet-500 checked:bg-violet-500"
+        className="size-4 accent-primary"
         defaultChecked={defaultChecked}
         name={name}
         type="checkbox"
@@ -426,9 +439,9 @@ function ReadOnlyPreference({
   value: string;
 }) {
   return (
-    <div className="grid grid-cols-[1fr_auto] items-center gap-4 rounded-lg border border-white/10 bg-slate-950/25 px-3 py-2 text-sm">
-      <span className="text-slate-300">{label}</span>
-      <span className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs font-medium text-slate-300">
+    <div className="grid grid-cols-[1fr_auto] items-center gap-4 rounded-lg border border-line bg-panel px-3 py-2 text-sm">
+      <span className="text-foreground">{label}</span>
+      <span className="rounded-md border border-line bg-secondary px-2.5 py-1 text-xs font-medium text-foreground">
         {value}
       </span>
     </div>

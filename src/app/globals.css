@@ -4,40 +4,47 @@
 /*
  * Bussin design tokens — the single source of truth for color, radius, and
  * type. Components must consume these tokens (directly or via the Tailwind
- * theme below); never introduce new colors, gradients, or shadows in
- * component code. See docs/design-system.md for the rules.
+ * theme below); never introduce new colors, gradients, or shadows outside the
+ * approved Night Studio patterns. See docs/design-system.md for the rules.
  */
 :root {
-  --radius: 0.5rem;
+  --radius: 0.75rem;
 
   /* Neutral surfaces, darkest to lightest */
-  --background: oklch(0.145 0.032 266);
-  --panel: oklch(0.18 0.036 264);
-  --panel-strong: oklch(0.215 0.042 264);
-  --panel-soft: oklch(0.25 0.046 266);
-  --card: oklch(0.18 0.036 264);
-  --popover: oklch(0.2 0.036 266);
-  --input: oklch(0.23 0.04 264);
+  --background: oklch(0.145 0.018 290);
+  --panel: oklch(0.175 0.02 290);
+  --panel-strong: oklch(0.21 0.022 290);
+  --panel-soft: oklch(0.16 0.018 290);
+  --card: oklch(0.185 0.022 290);
+  --popover: oklch(0.2 0.022 290);
+  --input: oklch(0.24 0.025 290);
 
   /* Text */
-  --foreground: oklch(0.955 0.018 260);
-  --card-foreground: oklch(0.955 0.018 260);
-  --popover-foreground: oklch(0.955 0.018 260);
-  --muted-foreground: oklch(0.68 0.044 262);
+  --foreground: oklch(0.965 0.006 290);
+  --card-foreground: oklch(0.965 0.006 290);
+  --popover-foreground: oklch(0.965 0.006 290);
+  --muted-foreground: oklch(0.7 0.02 290);
 
   /* Borders and focus */
-  --border: oklch(0.45 0.075 270 / 30%);
-  --line: oklch(0.5 0.078 274 / 24%);
-  --ring: oklch(0.68 0.19 292);
+  --border: oklch(0.28 0.025 290);
+  --line: oklch(0.26 0.022 290);
+  --ring: oklch(0.66 0.21 293 / 55%);
 
   /* Brand: violet is the only accent */
-  --primary: oklch(0.62 0.22 292);
-  --primary-foreground: oklch(0.985 0.006 260);
+  --primary: oklch(0.66 0.21 293);
+  --primary-foreground: oklch(0.985 0.005 290);
   --secondary: oklch(0.235 0.04 263);
   --secondary-foreground: oklch(0.9 0.02 260);
   --muted: oklch(0.235 0.036 263);
   --accent: oklch(0.28 0.075 286);
   --accent-foreground: oklch(0.94 0.02 270);
+
+  /* Night Studio signature backdrop */
+  --aurora-1: oklch(0.52 0.24 295);
+  --aurora-2: oklch(0.58 0.24 345);
+  --aurora-3: oklch(0.45 0.18 262);
+  --shadow-elevated:
+    0 1px 0 0 oklch(1 0 0 / 4%) inset, 0 12px 32px -8px oklch(0 0 0 / 45%);
 
   /* State colors: reserved for state, never decoration */
   --destructive: oklch(0.63 0.2 24);
@@ -75,9 +82,15 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-panel: var(--panel);
+  --color-panel-soft: var(--panel-soft);
+  --color-panel-strong: var(--panel-strong);
   --color-line: var(--line);
+  --color-aurora-1: var(--aurora-1);
+  --color-aurora-2: var(--aurora-2);
+  --color-aurora-3: var(--aurora-3);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-display);
 }
 
 .dark {
@@ -99,8 +112,38 @@ body {
 }
 
 ::selection {
-  background: oklch(0.62 0.22 292 / 42%);
+  background: oklch(0.66 0.21 293 / 42%);
   color: var(--foreground);
+}
+
+.prompt-card:focus-within {
+  border-color: oklch(0.66 0.21 293 / 60%);
+  box-shadow:
+    0 0 0 1px var(--ring),
+    0 0 48px -12px var(--primary);
+}
+
+@keyframes aurora-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  to {
+    transform: translate3d(3rem, -2rem, 0) scale(1.08);
+  }
+}
+
+.aurora-blob {
+  animation-direction: alternate;
+  animation-iteration-count: infinite;
+  animation-name: aurora-drift;
+  animation-timing-function: ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blob {
+    animation: none;
+  }
 }
 
 /* Flat surface. Kept under its legacy name so unrouted legacy modules render

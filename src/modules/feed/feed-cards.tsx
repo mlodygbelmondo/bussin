@@ -4,9 +4,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarClock,
   Check,
-  ChevronDown,
   ExternalLink,
   Loader2,
+  MoreHorizontal,
   Music2,
   Pause,
   Pencil,
@@ -40,6 +40,7 @@ import type {
   FeedActionResult,
   FeedJobGroup,
   FeedTrack,
+  FeedTrackStatus,
 } from "@/modules/feed/feed.types";
 import {
   cancelQueueRequest,
@@ -56,6 +57,10 @@ import {
 } from "@/modules/tracks/track-preview.actions";
 
 type FeedAction = (formData: FormData) => Promise<FeedActionResult>;
+type StatusPresentation = {
+  label: string;
+  variant: React.ComponentProps<typeof Badge>["variant"];
+};
 
 let activeAudio: HTMLAudioElement | null = null;
 
@@ -98,7 +103,7 @@ export function FeedList({
   groups: FeedJobGroup[];
 }) {
   return (
-    <div className="space-y-4" data-testid="feed">
+    <div className="space-y-4 pt-2" data-testid="feed">
       {groups.map((group) => (
         <JobGroupCard
           channelTitle={channelTitle}
@@ -119,69 +124,85 @@ function JobGroupCard({
 }) {
   const { pending, run } = useFeedAction();
   const isActive = group.status === "queued" || group.status === "running";
+  const groupStatus = getJobGroupStatusPresentation(group.status);
 
   return (
     <article
-      className="rounded-lg border border-line bg-card p-4"
+      className="overflow-hidden rounded-xl border border-line bg-card/80"
       data-testid="job-group"
     >
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <p className="font-medium">{group.prompt}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
+      <header className="flex items-start justify-between gap-3 px-5 py-4">
+        <div className="min-w-0">
+          <p className="truncate font-medium">{group.prompt}</p>
+          <p className="mt-1 font-mono text-xs text-muted-foreground">
             {formatDateTime(group.createdAt)} · {group.trackCount}{" "}
             {group.trackCount === 1 ? "track" : "tracks"}
           </p>
         </div>
-        {isActive ? (
-          <Button
-            data-testid="cancel-generation"
-            disabled={pending}
-            onClick={() => run(cancelQueueRequest, { id: group.id })}
-            size="sm"
-            variant="ghost"
-          >
-            <X className="size-4" />
-            Cancel
-          </Button>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-2">
+          <Badge variant={groupStatus.variant}>{groupStatus.label}</Badge>
+          {isActive ? (
+            <Button
+              data-testid="cancel-generation"
+              disabled={pending}
+              onClick={() => run(cancelQueueRequest, { id: group.id })}
+              size="sm"
+              variant="ghost"
+            >
+              <X className="size-4" />
+              Cancel
+            </Button>
+          ) : null}
+        </div>
       </header>
       {isActive &&
       group.tracks.every((track) => track.status === "generating") ? (
         <p
-          className="mt-3 flex items-center gap-2 text-sm text-muted-foreground"
+          className="flex items-center gap-2 border-t border-line/60 px-5 py-3 text-sm text-muted-foreground"
           data-testid="loading-state"
         >
           <Loader2 className="size-4 animate-spin text-primary" />
-          Generating {group.trackCount}{" "}
+          Creating {group.trackCount}{" "}
           {group.trackCount === 1 ? "track" : "tracks"}… this usually takes a
           minute or two.
         </p>
       ) : null}
       {group.status === "failed" ? (
         <div
-          className="mt-3 flex items-center justify-between gap-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-danger"
+          className="mx-5 mb-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm"
           data-testid="error-state"
         >
-          <span>{group.failureReason ?? "Generation failed."}</span>
-          <Button
-            disabled={pending}
-            onClick={() =>
-              run(retryFailedQueueItem, {
-                id: group.id,
-                type: "generation_request",
-              })
-            }
-            size="sm"
-            variant="outline"
-          >
-            <RotateCcw className="size-4" />
-            Retry
-          </Button>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-medium">We couldn&apos;t create this one.</p>
+              {group.failureReason ? (
+                <details className="mt-1 text-muted-foreground">
+                  <summary className="cursor-pointer">Details</summary>
+                  <p className="mt-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 font-mono text-xs text-danger">
+                    {group.failureReason}
+                  </p>
+                </details>
+              ) : null}
+            </div>
+            <Button
+              disabled={pending}
+              onClick={() =>
+                run(retryFailedQueueItem, {
+                  id: group.id,
+                  type: "generation_request",
+                })
+              }
+              size="sm"
+              variant="outline"
+            >
+              <RotateCcw className="size-4" />
+              Retry
+            </Button>
+          </div>
         </div>
       ) : null}
       {group.tracks.length > 0 ? (
-        <div className="mt-3 space-y-2">
+        <div className="divide-y divide-line/60 border-t border-line/60">
           {group.tracks.map((track) => (
             <TrackCard
               channelTitle={channelTitle}
@@ -208,10 +229,10 @@ function TrackCard({
 
   return (
     <div
-      className="rounded-md border border-border bg-background/40 p-3"
+      className="px-5 py-3.5 transition-colors hover:bg-panel-soft/60"
       data-testid="track-card"
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <CoverThumb coverUrl={track.coverUrl} title={track.title} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -222,147 +243,42 @@ function TrackCard({
               </span>
             ) : null}
           </div>
-          <div className="mt-1 flex items-center gap-2">
+          <div className="mt-1 flex flex-wrap items-center gap-2">
             <TrackStatusBadge track={track} />
             {track.status === "scheduled" && track.scheduledAt ? (
               <span className="text-xs text-muted-foreground">
-                {formatDateTime(track.scheduledAt)}
                 {channelTitle ? ` → ${channelTitle}` : ""}
               </span>
             ) : null}
           </div>
         </div>
-        {track.audioUrl ? <AudioPlayButton src={track.audioUrl} /> : null}
+        <div className="flex items-center gap-2">
+          {track.audioUrl ? <AudioPlayButton src={track.audioUrl} /> : null}
+          <PrimaryTrackAction pending={pending} run={run} track={track} />
+          <TrackMoreMenu
+            pending={pending}
+            run={run}
+            setEditing={setEditing}
+            setScheduling={setScheduling}
+            track={track}
+          />
+        </div>
       </div>
 
       {track.status === "failed" ? (
         <div
-          className="mt-2 flex items-center justify-between gap-3 rounded-md bg-destructive/10 px-3 py-2 text-sm text-danger"
+          className="mt-3 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm"
           data-testid="track-error"
         >
-          <span>{track.failureReason ?? "Something went wrong."}</span>
-          {track.retryTarget ? (
-            <Button
-              data-testid="track-retry"
-              disabled={pending}
-              onClick={() =>
-                run(retryFailedQueueItem, {
-                  id: track.retryTarget?.id ?? "",
-                  type: track.retryTarget?.type ?? "track",
-                })
-              }
-              size="sm"
-              variant="outline"
-            >
-              <RotateCcw className="size-4" />
-              Retry
-            </Button>
+          <p className="font-medium">This track needs attention.</p>
+          {track.failureReason ? (
+            <details className="mt-1 text-muted-foreground">
+              <summary className="cursor-pointer">Details</summary>
+              <p className="mt-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 font-mono text-xs text-danger">
+                {track.failureReason}
+              </p>
+            </details>
           ) : null}
-        </div>
-      ) : null}
-
-      {track.status === "preview_ready" ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <div className="flex">
-            <Button
-              className="rounded-r-none"
-              data-testid="publish-now"
-              disabled={pending}
-              onClick={() => run(publishTrackNowAction, { trackId: track.id })}
-              size="sm"
-            >
-              Publish now
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  aria-label="More publish options"
-                  className="rounded-l-none border-l border-primary-foreground/20 px-2"
-                  data-testid="publish-options"
-                  disabled={pending}
-                  size="sm"
-                >
-                  <ChevronDown className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem
-                  data-testid="schedule-option"
-                  onSelect={() => setScheduling(true)}
-                >
-                  <CalendarClock className="size-4" />
-                  Schedule for…
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <Button
-            data-testid="edit-details"
-            onClick={() => setEditing((value) => !value)}
-            size="sm"
-            variant="ghost"
-          >
-            <Pencil className="size-4" />
-            Edit details
-          </Button>
-          <Button
-            data-testid="discard-track"
-            disabled={pending}
-            onClick={() => run(rejectTrackAction, { trackId: track.id })}
-            size="sm"
-            variant="ghost"
-          >
-            <Trash2 className="size-4" />
-            Discard
-          </Button>
-        </div>
-      ) : null}
-
-      {track.status === "scheduled" && track.uploadId ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button
-            data-testid="publish-early"
-            disabled={pending}
-            onClick={() =>
-              run(publishScheduledUploadNowAction, {
-                uploadId: track.uploadId ?? "",
-              })
-            }
-            size="sm"
-            variant="outline"
-          >
-            Publish early
-          </Button>
-          <Button
-            data-testid="cancel-schedule"
-            disabled={pending}
-            onClick={() =>
-              run(cancelScheduledUploadAction, {
-                uploadId: track.uploadId ?? "",
-              })
-            }
-            size="sm"
-            variant="ghost"
-          >
-            <X className="size-4" />
-            Cancel schedule
-          </Button>
-        </div>
-      ) : null}
-
-      {track.status === "published" && track.youtubeVideoId ? (
-        <div className="mt-3">
-          <Button asChild size="sm" variant="outline">
-            <a
-              data-testid="watch-on-youtube"
-              href={`https://youtu.be/${track.youtubeVideoId}`}
-              rel="noreferrer"
-              target="_blank"
-            >
-              <ExternalLink className="size-4" />
-              Watch on YouTube
-            </a>
-          </Button>
         </div>
       ) : null}
 
@@ -376,6 +292,157 @@ function TrackCard({
         trackId={track.id}
       />
     </div>
+  );
+}
+
+function PrimaryTrackAction({
+  pending,
+  run,
+  track,
+}: {
+  pending: boolean;
+  run: ReturnType<typeof useFeedAction>["run"];
+  track: FeedTrack;
+}) {
+  if (track.status === "preview_ready") {
+    return (
+      <Button
+        data-testid="publish-now"
+        disabled={pending}
+        onClick={() => run(publishTrackNowAction, { trackId: track.id })}
+        size="sm"
+      >
+        Publish
+      </Button>
+    );
+  }
+
+  if (track.status === "failed" && track.retryTarget) {
+    return (
+      <Button
+        data-testid="track-retry"
+        disabled={pending}
+        onClick={() =>
+          run(retryFailedQueueItem, {
+            id: track.retryTarget?.id ?? "",
+            type: track.retryTarget?.type ?? "track",
+          })
+        }
+        size="sm"
+        variant="outline"
+      >
+        <RotateCcw className="size-4" />
+        Retry
+      </Button>
+    );
+  }
+
+  if (track.status === "published" && track.youtubeVideoId) {
+    return (
+      <Button asChild size="sm" variant="outline">
+        <a
+          data-testid="watch-on-youtube"
+          href={`https://youtu.be/${track.youtubeVideoId}`}
+          rel="noreferrer"
+          target="_blank"
+        >
+          <ExternalLink className="size-4" />
+          Watch
+        </a>
+      </Button>
+    );
+  }
+
+  return null;
+}
+
+function TrackMoreMenu({
+  pending,
+  run,
+  setEditing,
+  setScheduling,
+  track,
+}: {
+  pending: boolean;
+  run: ReturnType<typeof useFeedAction>["run"];
+  setEditing: React.Dispatch<React.SetStateAction<boolean>>;
+  setScheduling: React.Dispatch<React.SetStateAction<boolean>>;
+  track: FeedTrack;
+}) {
+  const hasPreviewActions = track.status === "preview_ready";
+  const hasScheduledActions = track.status === "scheduled" && track.uploadId;
+
+  if (!hasPreviewActions && !hasScheduledActions) {
+    return null;
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          aria-label="More track options"
+          data-testid="publish-options"
+          disabled={pending}
+          size="icon"
+          variant="ghost"
+        >
+          <MoreHorizontal className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {hasPreviewActions ? (
+          <>
+            <DropdownMenuItem
+              data-testid="schedule-option"
+              onSelect={() => setScheduling(true)}
+            >
+              <CalendarClock className="size-4" />
+              Schedule for…
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              data-testid="edit-details"
+              onSelect={() => setEditing((value) => !value)}
+            >
+              <Pencil className="size-4" />
+              Edit details
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              data-testid="discard-track"
+              onSelect={() => run(rejectTrackAction, { trackId: track.id })}
+            >
+              <Trash2 className="size-4" />
+              Discard
+            </DropdownMenuItem>
+          </>
+        ) : null}
+        {hasScheduledActions ? (
+          <>
+            <DropdownMenuItem
+              data-testid="publish-early"
+              onSelect={() =>
+                run(publishScheduledUploadNowAction, {
+                  uploadId: track.uploadId ?? "",
+                })
+              }
+            >
+              <ExternalLink className="size-4" />
+              Publish early
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              data-testid="cancel-schedule"
+              onSelect={() =>
+                run(cancelScheduledUploadAction, {
+                  uploadId: track.uploadId ?? "",
+                })
+              }
+            >
+              <X className="size-4" />
+              Cancel schedule
+            </DropdownMenuItem>
+          </>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -454,19 +521,23 @@ function ScheduleDialog({
 }) {
   const { pending, run } = useFeedAction();
   const [scheduledAt, setScheduledAt] = useState("");
+  const [minScheduledAt] = useState(() =>
+    toDatetimeLocalValue(new Date(Date.now() + 60_000)),
+  );
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="max-w-sm" data-testid="schedule-dialog">
         <DialogHeader>
-          <DialogTitle>Schedule upload</DialogTitle>
+          <DialogTitle>Schedule publishing</DialogTitle>
           <DialogDescription>
-            The video uploads to YouTube automatically at this time.
+            We&apos;ll publish the video to YouTube at this time.
           </DialogDescription>
         </DialogHeader>
         <Input
           aria-label="Schedule time"
           data-testid="schedule-input"
+          min={minScheduledAt}
           onChange={(event) => setScheduledAt(event.target.value)}
           type="datetime-local"
           value={scheduledAt}
@@ -475,16 +546,30 @@ function ScheduleDialog({
           <Button
             data-testid="schedule-confirm"
             disabled={pending || !scheduledAt}
-            onClick={() =>
+            onClick={() => {
+              const scheduledDate = new Date(scheduledAt);
+
+              if (!Number.isFinite(scheduledDate.getTime())) {
+                toast.error("Pick a date and time first.");
+
+                return;
+              }
+
+              if (scheduledDate.getTime() <= Date.now()) {
+                toast.error("Pick a time in the future");
+
+                return;
+              }
+
               run(
                 scheduleTrackAction,
                 {
-                  scheduled_at: new Date(scheduledAt).toISOString(),
+                  scheduled_at: scheduledDate.toISOString(),
                   trackId,
                 },
                 () => onOpenChange(false),
-              )
-            }
+              );
+            }}
           >
             <CalendarClock className="size-4" />
             Schedule
@@ -524,10 +609,11 @@ function AudioPlayButton({ src }: { src: string }) {
   return (
     <Button
       aria-label={playing ? "Pause preview" : "Play preview"}
+      className="flex size-9 items-center justify-center rounded-full bg-primary/15 text-primary transition-colors hover:bg-primary/25"
       data-testid="play-track"
       onClick={toggle}
       size="icon"
-      variant="outline"
+      variant="ghost"
     >
       {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
     </Button>
@@ -560,48 +646,102 @@ function CoverThumb({
 }
 
 function TrackStatusBadge({ track }: { track: FeedTrack }) {
+  const status = getTrackStatusPresentation({
+    scheduledAt: track.scheduledAt,
+    status: track.status,
+  });
+
   switch (track.status) {
     case "generating":
       return (
-        <Badge variant="secondary">
+        <Badge variant={status.variant}>
           <Loader2 className="size-3 animate-spin" />
-          Generating
+          {status.label}
         </Badge>
       );
     case "preview_ready":
-      return <Badge variant="info">Preview ready</Badge>;
+      return <Badge variant={status.variant}>{status.label}</Badge>;
     case "rendering":
       return (
-        <Badge variant="info">
+        <Badge variant={status.variant}>
           <Loader2 className="size-3 animate-spin" />
-          Rendering
+          {status.label}
         </Badge>
       );
     case "uploading":
       return (
-        <Badge variant="info">
+        <Badge variant={status.variant}>
           <Loader2 className="size-3 animate-spin" />
-          Uploading
+          {status.label}
         </Badge>
       );
     case "scheduled":
       return (
-        <Badge variant="warning">
+        <Badge variant={status.variant}>
           <CalendarClock className="size-3" />
-          Scheduled
+          {status.label}
         </Badge>
       );
     case "published":
       return (
-        <Badge variant="success">
+        <Badge variant={status.variant}>
           <Check className="size-3" />
-          Published
+          {status.label}
         </Badge>
       );
     case "failed":
-      return <Badge variant="destructive">Failed</Badge>;
+      return <Badge variant={status.variant}>{status.label}</Badge>;
     case "discarded":
-      return <Badge variant="outline">Discarded</Badge>;
+      return <Badge variant={status.variant}>{status.label}</Badge>;
+  }
+}
+
+export function getTrackStatusPresentation({
+  scheduledAt,
+  status,
+}: {
+  scheduledAt?: string | null;
+  status: FeedTrackStatus;
+}): StatusPresentation {
+  switch (status) {
+    case "generating":
+      return { label: "Composing…", variant: "secondary" };
+    case "preview_ready":
+      return { label: "Ready to publish", variant: "info" };
+    case "rendering":
+      return { label: "Making your video…", variant: "info" };
+    case "uploading":
+      return { label: "Publishing…", variant: "info" };
+    case "scheduled":
+      return {
+        label: scheduledAt
+          ? `Scheduled for ${formatDateTime(scheduledAt)}`
+          : "Scheduled",
+        variant: "warning",
+      };
+    case "published":
+      return { label: "Live on YouTube", variant: "success" };
+    case "failed":
+      return { label: "Needs attention", variant: "destructive" };
+    case "discarded":
+      return { label: "Discarded", variant: "outline" };
+  }
+}
+
+function getJobGroupStatusPresentation(
+  status: FeedJobGroup["status"],
+): StatusPresentation {
+  switch (status) {
+    case "queued":
+      return { label: "Queued", variant: "secondary" };
+    case "running":
+      return { label: "Generating", variant: "info" };
+    case "completed":
+      return { label: "Complete", variant: "success" };
+    case "failed":
+      return { label: "Failed", variant: "destructive" };
+    case "cancelled":
+      return { label: "Cancelled", variant: "outline" };
   }
 }
 
@@ -619,4 +759,10 @@ function formatDateTime(iso: string): string {
     minute: "2-digit",
     month: "short",
   }).format(new Date(iso));
+}
+
+function toDatetimeLocalValue(date: Date): string {
+  const offsetMs = date.getTimezoneOffset() * 60_000;
+
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }

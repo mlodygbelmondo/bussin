@@ -1,31 +1,27 @@
 "use client";
 
-import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function ChannelsError({ reset }: { reset: () => void }) {
   return (
     <main
-      className="min-h-[100dvh] bg-[#07101f] px-4 py-12 text-foreground lg:px-9"
+      className="grid min-h-[100dvh] place-items-center bg-background p-7 text-foreground"
       data-testid="error-state"
     >
-      <section className="mx-auto max-w-2xl rounded-lg border border-red-300/20 bg-red-500/10 p-6">
-        <div className="flex gap-4">
-          <AlertTriangle className="mt-1 size-6 text-red-200" />
-          <div>
-            <h1 className="text-xl font-semibold text-white">
-              Channels could not load
-            </h1>
-            <p className="mt-2 text-sm leading-6 text-red-100/75">
-              Refresh the screen and try again. If this keeps happening, the
-              channel query or integration status needs attention.
-            </p>
-            <Button className="mt-5" onClick={reset} type="button">
-              Retry
-            </Button>
-          </div>
-        </div>
-      </section>
+      <Card className="w-full max-w-md text-center">
+        <CardHeader>
+          <CardTitle className="text-xl">Something went wrong.</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Try again.
+          </p>
+          <Button className="mt-5" onClick={reset} type="button">
+            Try again
+          </Button>
+        </CardContent>
+      </Card>
     </main>
   );
 }

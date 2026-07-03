@@ -7,6 +7,7 @@ export default function DashboardLoading() {
         <Skeleton className="h-6 w-28" />
         <Skeleton className="h-8 w-40" />
       </div>
+      <p className="mt-6 text-sm text-muted-foreground">Loading your studio…</p>
       <Skeleton className="mt-10 h-36 w-full" />
       <div className="mt-6 space-y-3">
         <Skeleton className="h-28 w-full" />

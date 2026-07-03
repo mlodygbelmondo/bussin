@@ -15,9 +15,17 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { isMockMode, mockUser } from "@/lib/app-config";
 import { APP_NAME } from "@/lib/app-public-config";
+import { cn } from "@/lib/utils";
 import {
   completeOnboardingAction,
   saveDefaultsAction,
@@ -58,26 +66,29 @@ export default async function OnboardingPage({
 
   return (
     <main
-      className="min-h-[100dvh] overflow-hidden bg-[#070d20] px-4 py-7 text-slate-100 sm:px-7 lg:px-10"
+      className="min-h-[100dvh] bg-background px-4 py-7 text-foreground sm:px-7 lg:px-10"
       data-testid="screen-onboarding"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_21%_8%,rgba(129,86,255,0.2),transparent_24rem),radial-gradient(circle_at_76%_8%,rgba(46,118,255,0.16),transparent_28rem),linear-gradient(180deg,rgba(6,10,26,0.35),rgba(6,12,28,0.96))]" />
-      <div className="relative mx-auto max-w-[1448px]">
+      <div className="mx-auto max-w-[1180px]">
         <header className="flex items-center justify-between gap-4">
           <Link
-            className="flex items-center gap-3 text-2xl font-semibold tracking-tight text-white"
+            className="font-display flex items-center gap-3 text-2xl font-semibold tracking-tight text-foreground"
             href="/"
           >
-            <span className="grid size-8 place-items-center text-violet-300">
+            <span className="grid size-8 place-items-center text-primary">
               <AudioWaveform className="size-8" />
             </span>
             {APP_NAME}
           </Link>
           <div className="flex items-center gap-4 text-sm">
-            <span className="hidden text-slate-400 sm:inline">Need help?</span>
-            <Button className="h-9" variant="outline">
-              <Headphones className="size-4" />
-              Contact support
+            <span className="hidden text-muted-foreground sm:inline">
+              Need help?
+            </span>
+            <Button asChild className="h-9" variant="ghost">
+              <a href="mailto:support@bussin.app">
+                <Headphones className="size-4" />
+                Contact support
+              </a>
             </Button>
           </div>
         </header>
@@ -85,11 +96,11 @@ export default async function OnboardingPage({
         <OnboardingStepper currentStep={currentStep} />
 
         <section className="mt-12 text-center">
-          <h1 className="text-4xl leading-tight font-semibold tracking-tight text-white md:text-5xl">
+          <h1 className="font-display text-4xl leading-tight font-semibold tracking-tight text-foreground md:text-5xl">
             Let&apos;s get you set up
           </h1>
-          <p className="mt-3 text-base text-slate-400">
-            Connect your accounts and set your preferences to start creating.
+          <p className="mt-3 text-base text-muted-foreground">
+            Connect your accounts and you&apos;re ready to create.
           </p>
         </section>
 
@@ -104,14 +115,16 @@ export default async function OnboardingPage({
           <FirstGenerationCard ready={sunoConnected && youtubeConnected} />
         </section>
 
-        <section className="mt-5 rounded-lg border border-slate-300/12 bg-slate-900/42 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_18px_60px_rgba(0,0,0,0.28)] md:flex md:items-center md:justify-between md:gap-8">
+        <section className="mt-5 rounded-xl border border-line bg-card/80 p-6 md:flex md:items-center md:justify-between md:gap-8">
           <div className="flex max-w-2xl items-center gap-5">
-            <span className="grid size-16 shrink-0 place-items-center rounded-full bg-violet-500/15 shadow-[0_0_42px_rgba(139,92,246,0.42)]">
-              <ShieldCheck className="size-9 text-violet-200" />
+            <span className="grid size-12 shrink-0 place-items-center rounded-full border border-line bg-secondary text-primary">
+              <ShieldCheck className="size-6" />
             </span>
             <div>
-              <h2 className="font-semibold text-white">Your data is secure</h2>
-              <p className="mt-1 text-sm leading-relaxed text-slate-400">
+              <h2 className="font-semibold text-foreground">
+                Your data is secure
+              </h2>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                 We use industry-standard encryption and secure OAuth
                 connections. Your data is never shared or sold.
               </p>
@@ -119,8 +132,8 @@ export default async function OnboardingPage({
           </div>
           <div className="mt-6 flex flex-col gap-3 md:mt-0 md:min-w-[420px]">
             <div className="flex gap-4">
-              <Button className="h-12 flex-1" variant="outline">
-                Skip for now
+              <Button asChild className="h-12 flex-1" variant="outline">
+                <Link href="/dashboard">Skip for now</Link>
               </Button>
               <form
                 action={completeOnboardingAction}
@@ -137,7 +150,7 @@ export default async function OnboardingPage({
                 </Button>
               </form>
             </div>
-            <p className="text-center text-xs text-slate-500">
+            <p className="text-center text-xs text-muted-foreground">
               You can always change these settings later.
             </p>
           </div>
@@ -208,8 +221,10 @@ function OnboardingStepper({ currentStep }: { currentStep: number }) {
               <span
                 className={
                   active || complete
-                    ? "grid size-8 place-items-center rounded-full border border-violet-200/40 bg-gradient-to-br from-violet-400 to-violet-700 text-sm font-semibold text-white shadow-[0_0_24px_rgba(139,92,246,0.36)]"
-                    : "grid size-8 place-items-center rounded-full border border-slate-500/35 bg-slate-800/80 text-sm font-semibold text-slate-300"
+                    ? complete
+                      ? "grid size-6 place-items-center rounded-full border border-primary bg-primary/15 text-xs font-semibold text-primary"
+                      : "grid size-6 place-items-center rounded-full border border-primary bg-primary text-xs font-semibold text-primary-foreground"
+                    : "grid size-6 place-items-center rounded-full border border-line text-xs font-semibold text-muted-foreground"
                 }
               >
                 {complete ? <Check className="size-4" /> : number}
@@ -217,8 +232,8 @@ function OnboardingStepper({ currentStep }: { currentStep: number }) {
               <span
                 className={
                   active
-                    ? "hidden whitespace-nowrap text-sm font-semibold text-white md:inline"
-                    : "hidden whitespace-nowrap text-sm text-slate-300 md:inline"
+                    ? "hidden whitespace-nowrap text-sm font-semibold text-foreground md:inline"
+                    : "hidden whitespace-nowrap text-sm text-muted-foreground md:inline"
                 }
               >
                 {step}
@@ -228,8 +243,8 @@ function OnboardingStepper({ currentStep }: { currentStep: number }) {
               <span
                 className={
                   complete
-                    ? "h-px min-w-10 bg-violet-400/75"
-                    : "h-px min-w-10 bg-slate-500/35"
+                    ? "h-px min-w-10 bg-primary/50"
+                    : "h-px min-w-10 bg-line"
                 }
               />
             ) : null}
@@ -258,22 +273,21 @@ function SetupCard({
   title: string;
 }) {
   return (
-    <article
-      className={`rounded-lg border bg-slate-900/46 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_18px_60px_rgba(0,0,0,0.28)] ${
-        active
-          ? "border-violet-400/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_0_0_1px_rgba(139,92,246,0.12),0_0_42px_rgba(139,92,246,0.18)]"
-          : "border-slate-300/12"
-      }`}
+    <Card
+      className={cn(
+        "rounded-xl border-line bg-card/80 p-6 py-6",
+        active ? "border-primary/50" : undefined,
+      )}
     >
-      <StepBadge>{step}</StepBadge>
-      <h2 className="mt-5 text-2xl font-semibold tracking-tight text-violet-300">
-        {title}
-      </h2>
-      <p className="mt-2 min-h-12 text-sm leading-relaxed text-slate-400">
-        {description}
-      </p>
-      <div className="mt-7">{children}</div>
-    </article>
+      <CardHeader>
+        <StepBadge>{step}</StepBadge>
+        <CardTitle className="font-display mt-3 text-2xl tracking-tight">
+          {title}
+        </CardTitle>
+        <CardDescription className="min-h-12">{description}</CardDescription>
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
   );
 }
 
@@ -299,30 +313,27 @@ function SunoCard({
       title="Connect Suno"
     >
       <div
-        className="rounded-lg border border-slate-300/12 bg-slate-950/35 p-5 text-center"
+        className="rounded-lg border border-line bg-panel p-5 text-center"
         data-testid="suno-connection-card"
       >
-        <div className="mx-auto grid size-16 place-items-center rounded-xl border border-slate-200/15 bg-gradient-to-br from-zinc-700 to-zinc-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]">
-          <Music2 className="size-9 fill-white text-white" />
+        <div className="mx-auto grid size-14 place-items-center rounded-lg border border-line bg-secondary text-primary">
+          <Music2 className="size-7" />
         </div>
-        <h3 className="mt-4 text-xl font-semibold text-white">Suno</h3>
+        <h3 className="mt-4 text-xl font-semibold text-foreground">Suno</h3>
         <div className="mt-4">
           <StatusBadge connected={connected} />
         </div>
         {!connected && visibleError ? (
           <p
-            className="mt-4 rounded-md border border-rose-300/25 bg-rose-500/10 p-3 text-left text-sm text-rose-200"
+            className="mt-4 rounded-md border border-danger/40 bg-danger/10 p-3 text-left text-sm text-danger"
             data-testid="suno-connection-error"
           >
             {visibleError}
           </p>
         ) : null}
         {connected ? (
-          <div className="mt-6 flex items-center justify-between rounded-md border border-slate-300/12 bg-slate-950/35 p-3 text-sm text-slate-400">
+          <div className="mt-6 rounded-md border border-line bg-secondary p-3 text-sm text-muted-foreground">
             <span>{connection.label ?? "Suno connection"}</span>
-            <Button size="sm" variant="outline">
-              Disconnect
-            </Button>
           </div>
         ) : (
           <form action={saveSunoConnectionAction} className="mt-6 space-y-3">
@@ -343,7 +354,7 @@ function SunoCard({
             <Button className="w-full" type="submit">
               Test & save Suno
             </Button>
-            <p className="text-left text-xs text-slate-500">
+            <p className="text-left text-xs text-muted-foreground">
               Create a key at sunoapi.org under API Key Management. We test it
               before saving.
             </p>
@@ -367,10 +378,10 @@ function SunoCard({
           ],
         ].map(([title, copy]) => (
           <div className="flex gap-4" key={title}>
-            <ShieldCheck className="mt-0.5 size-5 text-slate-300" />
+            <ShieldCheck className="mt-0.5 size-5 text-primary" />
             <div>
-              <p className="text-sm font-medium text-slate-100">{title}</p>
-              <p className="mt-1 text-xs text-slate-500">{copy}</p>
+              <p className="text-sm font-medium text-foreground">{title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{copy}</p>
             </div>
           </div>
         ))}
@@ -387,13 +398,13 @@ function YoutubeCard({ connected }: { connected: boolean }) {
       title="Connect YouTube"
     >
       <div
-        className="rounded-lg border border-slate-300/12 bg-slate-950/35 p-5 text-center"
+        className="rounded-lg border border-line bg-panel p-5 text-center"
         data-testid="youtube-connection-card"
       >
-        <div className="mx-auto grid size-16 place-items-center rounded-xl border border-slate-200/15 bg-gradient-to-br from-zinc-600 to-zinc-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]">
-          <Play className="size-10 fill-red-500 text-red-500" />
+        <div className="mx-auto grid size-14 place-items-center rounded-lg border border-line bg-secondary text-primary">
+          <Play className="size-7" />
         </div>
-        <h3 className="mt-4 text-xl font-semibold text-white">YouTube</h3>
+        <h3 className="mt-4 text-xl font-semibold text-foreground">YouTube</h3>
         <div className="mt-4">
           <StatusBadge connected={connected} />
         </div>
@@ -404,21 +415,21 @@ function YoutubeCard({ connected }: { connected: boolean }) {
         </form>
       </div>
 
-      <div className="mt-5 rounded-lg border border-slate-300/12 bg-slate-950/35 p-5">
-        <h3 className="font-semibold text-white">Why connect YouTube?</h3>
-        <ul className="mt-4 space-y-3 text-sm text-slate-400">
+      <div className="mt-5 rounded-lg border border-line bg-panel p-5">
+        <h3 className="font-semibold text-foreground">Why connect YouTube?</h3>
+        <ul className="mt-4 space-y-3 text-sm text-muted-foreground">
           {[
             "Publish directly to your channel",
             "Track performance & engagement",
             "Save time with one-click publishing",
           ].map((item) => (
             <li className="flex gap-3" key={item}>
-              <Check className="mt-0.5 size-4 text-slate-300" />
+              <Check className="mt-0.5 size-4 text-primary" />
               {item}
             </li>
           ))}
         </ul>
-        <p className="mt-5 text-sm leading-relaxed text-slate-400">
+        <p className="mt-5 text-sm leading-relaxed text-muted-foreground">
           You&apos;ll be redirected to Google to authorize access.
         </p>
       </div>
@@ -496,10 +507,10 @@ function DefaultsCard({
           <option value="manual">I&apos;ll upload images manually</option>
         </SelectField>
 
-        <div className="rounded-lg border border-violet-300/12 bg-slate-950/35 p-4">
+        <div className="rounded-lg border border-line bg-panel p-4">
           <div className="flex gap-3">
-            <Sparkles className="mt-0.5 size-5 text-violet-300" />
-            <p className="text-sm leading-relaxed text-slate-400">
+            <Sparkles className="mt-0.5 size-5 text-primary" />
+            <p className="text-sm leading-relaxed text-muted-foreground">
               Tip: These defaults save time.
               <br />
               {defaultChannelTitle
@@ -530,21 +541,20 @@ function FirstGenerationCard({ ready }: { ready: boolean }) {
       step="Step 4 of 4"
       title="Create first generation"
     >
-      <div className="relative h-48 overflow-hidden rounded-lg border border-slate-300/12 bg-[#071127]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_72%,rgba(111,63,255,0.46),transparent_34%),radial-gradient(circle_at_72%_46%,rgba(26,199,255,0.2),transparent_22%)]" />
-        <div className="absolute right-8 bottom-9 left-8 h-16 rounded-[18px] border border-cyan-300/25 bg-slate-950/50 shadow-[0_18px_55px_rgba(0,0,0,0.55)]" />
+      <div className="relative h-48 overflow-hidden rounded-lg border border-line bg-panel">
+        <div className="absolute right-8 bottom-9 left-8 h-16 rounded-lg border border-line bg-secondary" />
         <div className="absolute right-12 bottom-14 left-12 flex h-28 items-end gap-1.5">
           {[28, 54, 38, 82, 112, 65, 138, 92, 52, 75, 105, 62, 36].map(
             (height, index) => (
               <span
-                className="flex-1 rounded-t bg-gradient-to-t from-violet-600 via-fuchsia-400 to-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.34)]"
+                className="flex-1 rounded-t bg-primary"
                 key={`${height}-${index}`}
                 style={{ height }}
               />
             ),
           )}
         </div>
-        <Music2 className="absolute top-10 right-24 size-9 text-indigo-300" />
+        <Music2 className="absolute top-10 right-24 size-9 text-primary" />
       </div>
 
       <div className="mt-7 space-y-5">
@@ -554,10 +564,10 @@ function FirstGenerationCard({ ready }: { ready: boolean }) {
           ["Publish to YouTube", "Share with the world in one click."],
         ].map(([title, copy]) => (
           <div className="flex gap-4" key={title}>
-            <CheckCircle2 className="mt-0.5 size-5 text-slate-300" />
+            <CheckCircle2 className="mt-0.5 size-5 text-primary" />
             <div>
-              <p className="text-sm font-medium text-slate-100">{title}</p>
-              <p className="mt-1 text-xs text-slate-500">{copy}</p>
+              <p className="text-sm font-medium text-foreground">{title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{copy}</p>
             </div>
           </div>
         ))}
@@ -576,7 +586,7 @@ function FirstGenerationCard({ ready }: { ready: boolean }) {
 function StatusBadge({ connected }: { connected: boolean }) {
   if (connected) {
     return (
-      <Badge className="border-emerald-300/20 bg-emerald-500/18 text-emerald-200">
+      <Badge variant="success">
         <CheckCircle2 className="size-3" />
         Connected
       </Badge>
@@ -584,7 +594,7 @@ function StatusBadge({ connected }: { connected: boolean }) {
   }
 
   return (
-    <Badge className="border-amber-300/20 bg-amber-500/10 text-amber-200">
+    <Badge variant="warning">
       <TriangleAlert className="size-3" />
       Not connected
     </Badge>
@@ -608,19 +618,19 @@ function SelectField({
 }) {
   return (
     <label className="block">
-      <span className="text-sm font-medium text-slate-200">{label}</span>
+      <span className="text-sm font-medium text-foreground">{label}</span>
       <span className="relative mt-2 block">
         <select
-          className="h-10 w-full appearance-none rounded-md border border-slate-300/14 bg-slate-950/35 px-3 pr-9 text-sm text-slate-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] outline-none focus:border-violet-300/60 focus:ring-3 focus:ring-violet-400/20"
+          className="h-10 w-full appearance-none rounded-md border border-border bg-input px-3 pr-9 text-sm text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/35"
           defaultValue={value}
           form={formId}
           name={name}
         >
           {children}
         </select>
-        <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-slate-500" />
+        <ChevronDown className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground" />
       </span>
-      <span className="mt-2 block text-xs text-slate-500">{help}</span>
+      <span className="mt-2 block text-xs text-muted-foreground">{help}</span>
     </label>
   );
 }

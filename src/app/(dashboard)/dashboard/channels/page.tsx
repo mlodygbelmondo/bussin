@@ -49,17 +49,17 @@ export default async function ChannelsPage({
 
   return (
     <main
-      className="min-h-[100dvh] bg-[#07101f] text-foreground"
+      className="min-h-[100dvh] bg-background text-foreground"
       data-testid="screen-dashboard-channels"
     >
       <ChannelsTopBar />
       <div className="mx-auto max-w-[1536px] px-4 py-6 lg:px-9">
         <header className="mb-5">
-          <h1 className="text-3xl font-semibold tracking-tight text-white">
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
             Channels
           </h1>
-          <p className="mt-2 text-sm text-slate-400">
-            Manage your connected platforms and publishing destinations.
+          <p className="mt-2 text-sm text-muted-foreground">
+            Keep your YouTube destinations connected and ready to publish.
           </p>
         </header>
 

@@ -1,4 +1,4 @@
-import { ArrowLeft, AudioWaveform } from "lucide-react";
+import { ArrowLeft, AudioLines } from "lucide-react";
 import Link from "next/link";
 import { APP_NAME } from "@/lib/app-public-config";
 import { cn } from "@/lib/utils";
@@ -12,25 +12,31 @@ export function DashboardTopBar({ className }: DashboardTopBarProps) {
   return (
     <header
       className={cn(
-        "flex h-14 items-center justify-between border-b border-line px-4 sm:px-6",
+        "border-b border-line/60 bg-background/70 backdrop-blur-md",
         className,
       )}
     >
-      <Link
-        className="flex items-center gap-2 text-lg font-semibold tracking-tight"
-        href="/dashboard"
-      >
-        <AudioWaveform className="size-6 text-primary" strokeWidth={2.4} />
-        {APP_NAME}
-      </Link>
-      <Link
-        className="flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground"
-        data-testid="back-to-studio"
-        href="/dashboard"
-      >
-        <ArrowLeft className="size-4" />
-        Back to studio
-      </Link>
+      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
+        <Link
+          className="flex items-center gap-2.5 text-lg tracking-tight"
+          href="/dashboard"
+        >
+          <span className="flex size-7 items-center justify-center rounded-md bg-primary/15 text-primary">
+            <AudioLines className="size-4" strokeWidth={2.4} />
+          </span>
+          <span className="font-display font-semibold tracking-tight">
+            {APP_NAME}
+          </span>
+        </Link>
+        <Link
+          className="flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground"
+          data-testid="back-to-studio"
+          href="/dashboard"
+        >
+          <ArrowLeft className="size-4" />
+          Back to studio
+        </Link>
+      </div>
     </header>
   );
 }

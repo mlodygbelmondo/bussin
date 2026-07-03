@@ -2,17 +2,18 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  AudioWaveform,
+  AlertCircle,
+  AudioLines,
   ChevronDown,
   LogOut,
   Music2,
+  Settings2,
   Sparkles,
-  SquarePlay,
 } from "lucide-react";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { signOut } from "@/app/auth/actions";
-import { Badge } from "@/components/ui/badge";
+import { Aurora } from "@/components/common/aurora";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
@@ -43,6 +44,13 @@ const DURATION_OPTIONS = [
   { label: "5 min", value: 300 },
 ];
 
+const PROMPT_SUGGESTIONS = [
+  "Lo-fi study beat",
+  "Dark cinematic trap",
+  "Upbeat vlog background",
+  "Calm piano for sleep",
+];
+
 async function fetchFeed(): Promise<FeedData> {
   const response = await fetch("/api/feed", { cache: "no-store" });
 
@@ -60,7 +68,12 @@ export function SingleWindow({
   accountMenuExtras?: React.ReactNode;
   initialFeed: FeedData;
 }) {
-  const { data: feed } = useQuery({
+  const {
+    data: feed,
+    error,
+    isError,
+    refetch,
+  } = useQuery({
     initialData: initialFeed,
     queryFn: fetchFeed,
     queryKey: ["feed"],
@@ -69,7 +82,9 @@ export function SingleWindow({
   });
   const connectionsReady =
     feed.connections.sunoConnected && feed.connections.youtubeConnected;
+  const sunoReady = feed.connections.sunoConnected;
   const hasHistory = feed.groups.length > 0;
+  const remaining = Math.max(feed.usage.limit - feed.usage.used, 0);
 
   return (
     <div
@@ -81,34 +96,96 @@ export function SingleWindow({
         usage={feed.usage}
         user={feed.user}
       />
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pb-16">
-        {connectionsReady ? (
-          <>
-            <section
-              className={
-                hasHistory
-                  ? "sticky top-0 z-10 -mx-4 bg-background/95 px-4 pt-6 pb-4 backdrop-blur-sm"
-                  : "flex flex-1 flex-col justify-center pt-10 pb-6"
-              }
-            >
-              {hasHistory ? null : (
-                <h1 className="mb-6 text-center text-3xl font-semibold tracking-tight sm:text-4xl">
-                  What do you want to make?
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 pb-16">
+        <section
+          className={
+            hasHistory
+              ? "sticky top-14 z-10 -mx-4 border-b border-line/60 bg-background/70 px-4 pt-5 pb-4 backdrop-blur-md"
+              : "relative flex flex-1 flex-col justify-center overflow-hidden pt-20 pb-12"
+          }
+        >
+          {hasHistory ? null : <Aurora className="-z-10" />}
+          <div className="mx-auto w-full max-w-3xl">
+            {hasHistory ? null : (
+              <div className="mb-8 text-center">
+                <h1 className="font-display text-4xl font-bold tracking-tight text-center">
+                  What should we make today?
                 </h1>
-              )}
-              <PromptBox />
-            </section>
-            {hasHistory ? (
-              <FeedList
-                channelTitle={feed.connections.channelTitle}
-                groups={feed.groups}
-              />
+                <p className="mx-auto mt-3 max-w-2xl text-base text-muted-foreground">
+                  Describe it. We&apos;ll create the track, render the video,
+                  and get it ready for YouTube.
+                </p>
+              </div>
+            )}
+            {remaining === 0 ? <UsageLimitBanner /> : null}
+            {!connectionsReady ? (
+              <ConnectGate connections={feed.connections} />
             ) : null}
-          </>
-        ) : (
-          <ConnectGate connections={feed.connections} />
-        )}
+            <PromptBox
+              disabled={!sunoReady || remaining === 0}
+              hasHistory={hasHistory}
+            />
+          </div>
+        </section>
+        {isError ? (
+          <FeedRefreshError error={error} onRetry={() => void refetch()} />
+        ) : null}
+        {hasHistory ? (
+          <FeedList
+            channelTitle={feed.connections.channelTitle}
+            groups={feed.groups}
+          />
+        ) : null}
       </main>
+    </div>
+  );
+}
+
+function FeedRefreshError({
+  error,
+  onRetry,
+}: {
+  error: Error | null;
+  onRetry: () => void;
+}) {
+  return (
+    <div
+      aria-live="polite"
+      className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-muted-foreground"
+      data-testid="feed-refresh-error"
+    >
+      <div className="flex items-start gap-3">
+        <AlertCircle className="mt-0.5 size-4 shrink-0 text-danger" />
+        <div>
+          <p className="font-medium text-foreground">
+            We couldn&apos;t refresh your studio. Retrying…
+          </p>
+          {error?.message ? <p className="mt-1">{error.message}</p> : null}
+        </div>
+      </div>
+      <Button onClick={onRetry} size="sm" type="button" variant="outline">
+        Retry
+      </Button>
+    </div>
+  );
+}
+
+function UsageLimitBanner() {
+  return (
+    <div className="mb-3 flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
+      <AlertCircle className="mt-0.5 size-4 shrink-0 text-warning" />
+      <div>
+        <p className="font-medium">You&apos;ve used all your generations.</p>
+        <p className="mt-1 text-muted-foreground">
+          <Link
+            className="text-primary underline-offset-4 hover:underline"
+            href="/dashboard/billing"
+          >
+            Upgrade
+          </Link>{" "}
+          to keep creating.
+        </p>
+      </div>
     </div>
   );
 }
@@ -125,84 +202,132 @@ function TopBar({
   const remaining = Math.max(usage.limit - usage.used, 0);
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-line px-4 sm:px-6">
-      <Link
-        className="flex items-center gap-2 text-lg font-semibold tracking-tight"
-        href="/dashboard"
-      >
-        <AudioWaveform className="size-6 text-primary" strokeWidth={2.4} />
-        {APP_NAME}
-      </Link>
-      <div className="flex items-center gap-3">
-        <Badge
-          data-testid="usage-counter"
-          variant={remaining === 0 ? "warning" : "secondary"}
+    <header className="sticky top-0 z-40 border-b border-line/60 bg-background/70 backdrop-blur-md">
+      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
+        <Link
+          className="flex items-center gap-2.5 text-lg tracking-tight"
+          href="/dashboard"
         >
-          {remaining} of {usage.limit} generations left
-        </Badge>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              aria-label="Open account menu"
-              className="flex items-center gap-1.5 rounded-md p-1 text-sm text-muted-foreground hover:text-foreground"
-              data-testid="account-menu-trigger"
-              type="button"
-            >
-              <span className="grid size-8 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-                {user.initials}
-              </span>
-              <ChevronDown className="size-4" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel className="font-normal">
-              <span className="block text-sm font-medium text-foreground">
-                {user.displayName}
-              </span>
-              <span className="block truncate text-xs text-muted-foreground">
-                {user.email}
-              </span>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {accountMenuExtras}
-            <DropdownMenuItem asChild>
-              <form action={signOut} className="w-full">
-                <button
-                  className="flex w-full items-center gap-2"
-                  data-testid="sign-out"
-                  type="submit"
+          <span className="flex size-7 items-center justify-center rounded-md bg-primary/15 text-primary">
+            <AudioLines className="size-4.5" strokeWidth={2.4} />
+          </span>
+          <span className="font-display font-semibold tracking-tight">
+            {APP_NAME}
+          </span>
+        </Link>
+        <div className="flex items-center gap-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                aria-label="Open account menu"
+                className="flex items-center gap-1.5 rounded-full text-sm text-muted-foreground transition-colors hover:text-foreground"
+                data-testid="account-menu-trigger"
+                type="button"
+              >
+                <span className="flex size-8 items-center justify-center rounded-full border border-line bg-panel text-sm font-semibold text-foreground transition-colors hover:border-primary/50">
+                  {user.initials}
+                </span>
+                <ChevronDown className="size-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="font-normal">
+                <span className="block text-sm font-medium text-foreground">
+                  {user.displayName}
+                </span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {user.email}
+                </span>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="font-normal">
+                <span
+                  className="block text-sm font-medium text-foreground"
+                  data-testid="usage-counter"
                 >
-                  <LogOut className="size-4" />
-                  Sign out
-                </button>
+                  {remaining} of {usage.limit} generations left
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {usage.plan} plan
+                </span>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {accountMenuExtras}
+              <form action={signOut}>
+                <DropdownMenuItem asChild>
+                  <button
+                    className="w-full"
+                    data-testid="sign-out"
+                    type="submit"
+                  >
+                    <LogOut className="size-4" />
+                    Sign out
+                  </button>
+                </DropdownMenuItem>
               </form>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </header>
   );
 }
 
-function PromptBox() {
+function PromptBox({
+  disabled,
+  hasHistory,
+}: {
+  disabled: boolean;
+  hasHistory: boolean;
+}) {
   const queryClient = useQueryClient();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [pending, startTransition] = useTransition();
   const [prompt, setPrompt] = useState("");
   const [trackCount, setTrackCount] = useState(2);
   const [duration, setDuration] = useState(180);
-  const canSubmit = prompt.trim().length >= 2 && !pending;
+  const canSubmit = prompt.trim().length >= 2 && !pending && !disabled;
+  const durationLabel =
+    DURATION_OPTIONS.find((option) => option.value === duration)?.label ??
+    `${Math.round(duration / 60)} min`;
 
-  function submit() {
+  useEffect(() => {
+    try {
+      const pendingPrompt = localStorage
+        .getItem("bussin.pending-prompt")
+        ?.trim();
+
+      if (pendingPrompt && prompt.length === 0) {
+        window.setTimeout(() => {
+          try {
+            setPrompt(pendingPrompt);
+            textareaRef.current?.focus();
+            localStorage.removeItem("bussin.pending-prompt");
+          } catch {
+            // Ignore storage access failures.
+          }
+        }, 0);
+      }
+    } catch {
+      // Ignore storage access failures.
+    }
+    // Run once on mount only for the landing-to-studio handoff.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function submit(form?: HTMLFormElement) {
     if (!canSubmit) {
       return;
     }
 
     startTransition(async () => {
-      const formData = new FormData();
+      const formData = form ? new FormData(form) : new FormData();
 
-      formData.append("prompt", prompt);
-      formData.append("track_count", String(trackCount));
-      formData.append("duration_seconds", String(duration));
+      if (!form) {
+        formData.append("prompt", prompt);
+        formData.append("track_count", String(trackCount));
+        formData.append("duration_seconds", String(duration));
+      }
 
       const result = await createFeedGenerationAction(formData);
 
@@ -217,10 +342,24 @@ function PromptBox() {
   }
 
   return (
-    <div className="rounded-lg border border-line bg-card p-3 focus-within:border-ring">
+    <form
+      className="prompt-card rounded-2xl border border-line bg-panel/80 p-3 text-left backdrop-blur-sm transition-shadow focus-within:border-primary/60"
+      onSubmit={(event) => {
+        event.preventDefault();
+        submit(event.currentTarget);
+      }}
+    >
+      <input name="track_count" type="hidden" value={trackCount} />
+      <input name="duration_seconds" type="hidden" value={duration} />
       <Textarea
-        className="min-h-20 resize-none border-0 bg-transparent p-1 shadow-none focus-visible:ring-0"
+        className={
+          hasHistory
+            ? "min-h-20 resize-none border-0 bg-transparent p-1 text-base shadow-none focus-visible:border-transparent focus-visible:ring-0"
+            : "min-h-32 resize-none border-0 bg-transparent p-2 text-base shadow-none focus-visible:border-transparent focus-visible:ring-0 sm:text-lg"
+        }
         data-testid="prompt-input"
+        disabled={disabled}
+        name="prompt"
         onChange={(event) => setPrompt(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
@@ -228,132 +367,165 @@ function PromptBox() {
             submit();
           }
         }}
-        placeholder="Describe the track you want — style, mood, instruments…"
+        placeholder="A warm lo-fi beat for a rainy night drive…"
+        ref={textareaRef}
         value={prompt}
       />
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <ChipSelect
-          ariaLabel="Number of tracks"
-          onChange={(value) => setTrackCount(value)}
-          options={TRACK_COUNT_OPTIONS.map((count) => ({
-            label: count === 1 ? "1 track" : `${count} tracks`,
-            value: count,
-          }))}
-          testId="track-count-select"
-          value={trackCount}
-        />
-        <ChipSelect
-          ariaLabel="Track duration"
-          onChange={(value) => setDuration(value)}
-          options={DURATION_OPTIONS}
-          testId="duration-select"
-          value={duration}
-        />
-        <Button
-          className="ml-auto"
-          data-testid="prompt-submit"
-          disabled={!canSubmit}
-          onClick={submit}
-          type="button"
-        >
+      {!hasHistory ? (
+        <div className="mt-2 flex flex-wrap justify-center gap-2">
+          {PROMPT_SUGGESTIONS.map((suggestion) => (
+            <button
+              className="rounded-full border border-line bg-panel/50 px-3.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-50"
+              disabled={disabled}
+              key={suggestion}
+              onClick={() => {
+                setPrompt(suggestion);
+                textareaRef.current?.focus();
+              }}
+              type="button"
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <OptionsMenu
+            disabled={disabled || pending}
+            duration={duration}
+            setDuration={setDuration}
+            setTrackCount={setTrackCount}
+            trackCount={trackCount}
+          />
+          <p className="text-xs text-muted-foreground">
+            {trackCount} {trackCount === 1 ? "track" : "tracks"} •{" "}
+            {durationLabel}
+          </p>
+        </div>
+        <Button data-testid="prompt-submit" disabled={!canSubmit} type="submit">
           <Sparkles className="size-4" />
           {pending ? "Starting…" : "Create"}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }
 
-function ChipSelect({
-  ariaLabel,
-  onChange,
-  options,
-  testId,
-  value,
+function OptionsMenu({
+  disabled,
+  duration,
+  setDuration,
+  setTrackCount,
+  trackCount,
 }: {
-  ariaLabel: string;
-  onChange: (value: number) => void;
-  options: { label: string; value: number }[];
-  testId: string;
-  value: number;
+  disabled: boolean;
+  duration: number;
+  setDuration: (value: number) => void;
+  setTrackCount: (value: number) => void;
+  trackCount: number;
 }) {
   return (
-    <select
-      aria-label={ariaLabel}
-      className="h-8 rounded-md border border-border bg-input/40 px-2 text-xs text-foreground outline-none focus-visible:border-ring"
-      data-testid={testId}
-      onChange={(event) => onChange(Number(event.target.value))}
-      value={value}
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button disabled={disabled} type="button" variant="ghost">
+          <Settings2 className="size-4" />
+          Options
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64 space-y-3 p-3">
+        <label className="block space-y-1.5 text-sm font-medium">
+          Tracks
+          <select
+            aria-label="Number of tracks"
+            className="h-9 w-full rounded-md border border-border bg-input px-2 text-sm text-foreground outline-none focus-visible:border-ring"
+            data-testid="track-count-select"
+            onChange={(event) => setTrackCount(Number(event.target.value))}
+            value={trackCount}
+          >
+            {TRACK_COUNT_OPTIONS.map((count) => (
+              <option key={count} value={count}>
+                {count === 1 ? "1 track" : `${count} tracks`}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block space-y-1.5 text-sm font-medium">
+          Duration
+          <select
+            aria-label="Track duration"
+            className="h-9 w-full rounded-md border border-border bg-input px-2 text-sm text-foreground outline-none focus-visible:border-ring"
+            data-testid="duration-select"
+            onChange={(event) => setDuration(Number(event.target.value))}
+            value={duration}
+          >
+            {DURATION_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
 function ConnectGate({ connections }: { connections: FeedConnections }) {
   return (
-    <section
-      className="flex flex-1 flex-col items-center justify-center gap-6 py-10 text-center"
+    <div
+      className="mb-3 rounded-xl border border-line bg-panel px-4 py-3 text-sm"
       data-testid="connect-gate"
     >
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Connect your accounts to start creating
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Bussin needs your Suno account to generate music and a YouTube channel
-          to publish it.
-        </p>
-      </div>
-      <div className="grid w-full max-w-xl gap-3 sm:grid-cols-2">
-        <ConnectCard
-          connected={connections.sunoConnected}
-          icon={<Music2 className="size-6" />}
-          name="Suno"
-          testId="connect-suno"
-        />
-        <ConnectCard
-          connected={connections.youtubeConnected}
-          icon={<SquarePlay className="size-6" />}
-          name="YouTube"
-          testId="connect-youtube"
-        />
-      </div>
-      <Button asChild data-testid="connect-cta" size="lg">
-        <Link href="/onboarding">Connect accounts</Link>
-      </Button>
-    </section>
-  );
-}
-
-function ConnectCard({
-  connected,
-  icon,
-  name,
-  testId,
-}: {
-  connected: boolean;
-  icon: React.ReactNode;
-  name: string;
-  testId: string;
-}) {
-  return (
-    <div
-      className="flex items-center gap-3 rounded-lg border border-line bg-card p-4 text-left"
-      data-testid={testId}
-    >
-      <span className="grid size-11 place-items-center rounded-md bg-primary/10 text-primary">
-        {icon}
-      </span>
-      <div>
-        <p className="font-medium">{name}</p>
-        <Badge variant={connected ? "success" : "warning"}>
-          {connected ? "Connected" : "Not connected"}
-        </Badge>
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-md bg-primary/15 text-primary">
+          <Music2 className="size-5" />
+        </span>
+        <div className="min-w-0 flex-1 space-y-2">
+          {!connections.sunoConnected ? (
+            <div>
+              <p className="font-medium">
+                Connect your Suno account to start creating
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Once Suno is connected, you can turn any prompt into music.
+              </p>
+            </div>
+          ) : null}
+          {!connections.youtubeConnected ? (
+            <div>
+              <p className="font-medium">
+                Connect YouTube so we can publish for you
+              </p>
+              <p className="text-sm text-muted-foreground">
+                You can keep creating now; connect YouTube before publishing.
+              </p>
+            </div>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {!connections.sunoConnected ? (
+              <Button asChild data-testid="connect-cta" size="sm">
+                <Link data-testid="connect-suno" href="/onboarding">
+                  Connect Suno
+                </Link>
+              </Button>
+            ) : null}
+            {!connections.youtubeConnected ? (
+              <Button
+                asChild
+                data-testid={
+                  connections.sunoConnected ? "connect-cta" : undefined
+                }
+                size="sm"
+                variant={connections.sunoConnected ? "default" : "outline"}
+              >
+                <Link data-testid="connect-youtube" href="/onboarding">
+                  Connect YouTube
+                </Link>
+              </Button>
+            ) : null}
+          </div>
+        </div>
       </div>
     </div>
   );

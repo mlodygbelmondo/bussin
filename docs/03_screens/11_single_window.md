@@ -57,4 +57,5 @@ Actions per state:
 `schedule-dialog`, `schedule-input`, `schedule-confirm`, `discard-track`,
 `edit-details`, `save-details`, `publish-early`, `cancel-schedule`,
 `watch-on-youtube`, `track-retry`, `cancel-generation`, `usage-counter`,
-`account-menu-trigger`, `connect-gate`, `sign-out`, `back-to-studio`.
+`account-menu-trigger`, `connect-gate`, `feed-refresh-error`, `sign-out`,
+`back-to-studio`.
