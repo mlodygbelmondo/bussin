@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createUsageRepository } from "@/modules/generation/generation.repository";
+import { createUsageRepository } from "@/server/services/generation.repository";
 import { createAuditLogService } from "@/server/services/audit-log.service";
 import { createImageAssetService } from "@/server/services/image-asset.service";
 import { createUsageService } from "@/server/services/usage.service";

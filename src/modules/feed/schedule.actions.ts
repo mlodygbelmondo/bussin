@@ -1,12 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isMockMode } from "@/lib/app-config";
-import { createClient } from "@/lib/supabase/server";
+import { requireWorkspace } from "@/modules/feed/workspace-context";
+import type { FeedActionResult } from "@/modules/feed/feed.types";
 import type { Database } from "@/lib/database.types";
-import type { ScheduledActionResult } from "@/modules/scheduled/scheduled.types";
 import { enqueueWorkerQueueJob } from "@/server/services/worker-queue.service";
 import {
   cancelScheduledUpload,
@@ -14,7 +13,7 @@ import {
   publishScheduledUploadNow,
   rescheduleUpload,
   type ScheduledUploadRepository,
-} from "@/modules/scheduled/scheduled.service";
+} from "@/server/services/scheduled-upload.service";
 
 type Supabase = SupabaseClient<Database>;
 type QueueRpcClient = Supabase & {
@@ -42,7 +41,7 @@ type QueueRpcClient = Supabase & {
 
 export async function rescheduleUploadAction(
   formData: FormData,
-): Promise<ScheduledActionResult> {
+): Promise<FeedActionResult> {
   if (isMockMode) {
     return { message: "Mock upload rescheduled.", ok: true };
   }
@@ -70,7 +69,7 @@ export async function rescheduleUploadAction(
 
 export async function cancelScheduledUploadAction(
   formData: FormData,
-): Promise<ScheduledActionResult> {
+): Promise<FeedActionResult> {
   if (isMockMode) {
     return { message: "Mock upload canceled.", ok: true };
   }
@@ -97,7 +96,7 @@ export async function cancelScheduledUploadAction(
 
 export async function publishScheduledUploadNowAction(
   formData: FormData,
-): Promise<ScheduledActionResult> {
+): Promise<FeedActionResult> {
   if (isMockMode) {
     return { message: "Mock upload queued for publishing.", ok: true };
   }
@@ -123,34 +122,12 @@ export async function publishScheduledUploadNowAction(
 }
 
 async function requireScheduledContext() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const { data, error } = await supabase
-    .from("workspace_members")
-    .select("workspace_id")
-    .eq("user_id", user.id)
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  if (!data) {
-    redirect("/onboarding");
-  }
+  const { supabase, userId, workspaceId } = await requireWorkspace();
 
   return {
     repository: createScheduledRepository(supabase),
-    userId: user.id,
-    workspaceId: data.workspace_id,
+    userId,
+    workspaceId,
   };
 }
 
@@ -234,11 +211,10 @@ function readUploadId(formData: FormData) {
 }
 
 function revalidateScheduled() {
-  revalidatePath("/dashboard/scheduled");
   revalidatePath("/dashboard");
 }
 
-function actionError(error: unknown, fallback: string): ScheduledActionResult {
+function actionError(error: unknown, fallback: string): FeedActionResult {
   return {
     message: error instanceof Error ? error.message : fallback,
     ok: false,

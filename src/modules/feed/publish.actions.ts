@@ -1,11 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json, TablesInsert } from "@/lib/database.types";
 import { isMockMode } from "@/lib/app-config";
-import { createClient } from "@/lib/supabase/server";
+import { requireWorkspace } from "@/modules/feed/workspace-context";
 import { effectiveBillingPlan } from "@/server/services/plan-limits.service";
 import {
   createTrackService,
@@ -19,7 +18,7 @@ import {
 } from "@/server/services/upload-limits.service";
 import { getCurrentUsagePeriod } from "@/server/services/usage.service";
 import { enqueueWorkerQueueJob } from "@/server/services/worker-queue.service";
-import type { TrackActionResult } from "@/modules/tracks/track-preview.types";
+import type { FeedActionResult } from "@/modules/feed/feed.types";
 
 type Supabase = SupabaseClient<Database>;
 type ExistingYoutubeUpload = Pick<
@@ -29,7 +28,7 @@ type ExistingYoutubeUpload = Pick<
 
 export async function approveTrackAction(
   formData: FormData,
-): Promise<TrackActionResult> {
+): Promise<FeedActionResult> {
   if (isMockMode) {
     return { message: "Mock track approved. Render queued.", ok: true };
   }
@@ -60,7 +59,7 @@ export async function approveTrackAction(
 
 export async function rejectTrackAction(
   formData: FormData,
-): Promise<TrackActionResult> {
+): Promise<FeedActionResult> {
   if (isMockMode) {
     return { message: "Mock track rejected.", ok: true };
   }
@@ -85,7 +84,7 @@ export async function rejectTrackAction(
 
 export async function publishTrackNowAction(
   formData: FormData,
-): Promise<TrackActionResult> {
+): Promise<FeedActionResult> {
   if (isMockMode) {
     return { message: "Mock publishing job queued.", ok: true };
   }
@@ -156,7 +155,7 @@ export async function publishTrackNowAction(
 
 export async function scheduleTrackAction(
   formData: FormData,
-): Promise<TrackActionResult> {
+): Promise<FeedActionResult> {
   if (isMockMode) {
     return { message: "Mock upload scheduled.", ok: true };
   }
@@ -505,34 +504,6 @@ async function enqueueYoutubeUpload(
   await enqueueWorkerQueueJob({ message, queueName: "youtube-upload-jobs" });
 }
 
-async function requireWorkspace() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const { data, error } = await supabase
-    .from("workspace_members")
-    .select("workspace_id")
-    .eq("user_id", user.id)
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  if (!data) {
-    redirect("/onboarding");
-  }
-
-  return { supabase, userId: user.id, workspaceId: data.workspace_id };
-}
-
 function createTrackRepository(supabase: Supabase): TrackRepository {
   return {
     async createAuditLog(input) {
@@ -649,7 +620,7 @@ function revalidateTrack() {
   revalidatePath("/dashboard");
 }
 
-function actionError(error: unknown, fallback: string): TrackActionResult {
+function actionError(error: unknown, fallback: string): FeedActionResult {
   return {
     message: error instanceof Error ? error.message : fallback,
     ok: false,

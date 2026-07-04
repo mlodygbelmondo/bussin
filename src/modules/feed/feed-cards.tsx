@@ -48,16 +48,16 @@ import type {
 import {
   cancelQueueRequest,
   retryFailedQueueItem,
-} from "@/modules/queue/queue.actions";
+} from "@/modules/feed/jobs.actions";
 import {
   cancelScheduledUploadAction,
   publishScheduledUploadNowAction,
-} from "@/modules/scheduled/scheduled.actions";
+} from "@/modules/feed/schedule.actions";
 import {
   publishTrackNowAction,
   rejectTrackAction,
   scheduleTrackAction,
-} from "@/modules/tracks/track-preview.actions";
+} from "@/modules/feed/publish.actions";
 
 type FeedAction = (formData: FormData) => Promise<FeedActionResult>;
 type StatusPresentation = {

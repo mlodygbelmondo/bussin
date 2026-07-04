@@ -1,11 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isMockMode } from "@/lib/app-config";
-import { createClient } from "@/lib/supabase/server";
-import { createGenerationRepository } from "@/modules/generation/generation.repository";
+import { requireWorkspace } from "@/modules/feed/workspace-context";
+import { createGenerationRepository } from "@/server/services/generation.repository";
 import type { FeedActionResult } from "@/modules/feed/feed.types";
 import { createGenerationRequestService } from "@/server/services/generation-request.service";
 import { ServiceError } from "@/server/services/service-error";
@@ -146,32 +145,4 @@ export async function updateTrackDetailsAction(
   revalidatePath("/dashboard");
 
   return { message: "Track details saved.", ok: true };
-}
-
-async function requireWorkspace() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const { data, error } = await supabase
-    .from("workspace_members")
-    .select("workspace_id")
-    .eq("user_id", user.id)
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  if (!data) {
-    redirect("/onboarding");
-  }
-
-  return { supabase, user, workspaceId: data.workspace_id };
 }

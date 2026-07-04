@@ -1,12 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { isMockMode } from "@/lib/app-config";
-import { createClient } from "@/lib/supabase/server";
-import type { QueueActionResult } from "@/modules/queue/queue.types";
+import { requireWorkspace } from "@/modules/feed/workspace-context";
+import type { FeedActionResult } from "@/modules/feed/feed.types";
 import { enqueueWorkerQueueJob } from "@/server/services/worker-queue.service";
 
 const TARGETS = [
@@ -22,7 +21,7 @@ type Supabase = SupabaseClient<Database>;
 
 export async function retryFailedQueueItem(
   formData: FormData,
-): Promise<QueueActionResult> {
+): Promise<FeedActionResult> {
   if (isMockMode) {
     return { message: "Mock retry queued.", ok: true };
   }
@@ -49,14 +48,14 @@ export async function retryFailedQueueItem(
     workspace_id: workspaceId,
   });
 
-  revalidatePath("/dashboard/queue");
+  revalidatePath("/dashboard");
 
   return { message: "Retry queued.", ok: true };
 }
 
 export async function cancelQueueRequest(
   formData: FormData,
-): Promise<QueueActionResult> {
+): Promise<FeedActionResult> {
   if (isMockMode) {
     return { message: "Mock queue request canceled.", ok: true };
   }
@@ -143,37 +142,9 @@ export async function cancelQueueRequest(
     workspace_id: workspaceId,
   });
 
-  revalidatePath("/dashboard/queue");
+  revalidatePath("/dashboard");
 
   return { message: "Request cancelled.", ok: true };
-}
-
-async function requireWorkspace() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const { data, error } = await supabase
-    .from("workspace_members")
-    .select("workspace_id")
-    .eq("user_id", user.id)
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  if (!data) {
-    redirect("/onboarding");
-  }
-
-  return { supabase, userId: user.id, workspaceId: data.workspace_id };
 }
 
 function parseTarget(formData: FormData) {

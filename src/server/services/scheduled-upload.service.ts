@@ -1,4 +1,7 @@
-import type { ScheduledActionResult } from "@/modules/scheduled/scheduled.types";
+export type ScheduledActionResult = {
+  message: string;
+  ok: boolean;
+};
 
 export type ScheduledUploadRecord = {
   id: string;
