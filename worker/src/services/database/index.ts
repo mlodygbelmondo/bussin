@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "../../../../src/lib/database.types";
+import {
+  selectMaybeSingle,
+  selectSingle,
+  throwOnError,
+} from "../../../../src/server/services/supabase-query";
 import type {
   TrackStatus,
   VideoRenderStatus,
@@ -524,42 +529,6 @@ export function createWorkerDatabaseService(
   };
 }
 
-async function selectSingle<T>(
-  promise: PromiseLike<QueryResult<T>>,
-): Promise<NonNullable<T>> {
-  const { data, error } = await promise;
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  if (!data) {
-    throw new Error("Expected one database row, found none.");
-  }
-
-  return data;
-}
-
-async function selectMaybeSingle<T>(
-  promise: PromiseLike<QueryResult<T>>,
-): Promise<T | null> {
-  const { data, error } = await promise;
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data;
-}
-
-async function throwOnError(promise: PromiseLike<QueryResult<unknown>>) {
-  const { error } = await promise;
-
-  if (error) {
-    throw new Error(error.message);
-  }
-}
-
 function currentMonthlyPeriod() {
   const now = new Date();
   const periodStart = new Date(
@@ -574,8 +543,3 @@ function currentMonthlyPeriod() {
     periodStart: periodStart.toISOString(),
   };
 }
-
-type QueryResult<T> = {
-  data: T;
-  error: { message: string } | null;
-};

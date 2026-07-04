@@ -2,21 +2,22 @@
 
 import { revalidatePath } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database, Json, TablesInsert } from "@/lib/database.types";
+import type { Database } from "@/lib/database.types";
 import { isMockMode } from "@/lib/app-config";
 import { requireWorkspace } from "@/modules/feed/workspace-context";
-import { effectiveBillingPlan } from "@/server/services/plan-limits.service";
 import {
-  createTrackService,
-  type TrackRepository,
-} from "@/server/services/track.service";
+  selectMaybeSingle,
+  selectSingle,
+  throwOnError,
+} from "@/server/services/supabase-query";
+import { createTrackRepository } from "@/server/services/track.repository";
+import { createTrackService } from "@/server/services/track.service";
+import { createUploadLimitsRepository } from "@/server/services/upload-limits.repository";
 import {
   checkUploadPlanLimit,
   uploadLimitMessage,
   type UploadLimitMode,
-  type UploadLimitsRepository,
 } from "@/server/services/upload-limits.service";
-import { getCurrentUsagePeriod } from "@/server/services/usage.service";
 import { enqueueWorkerQueueJob } from "@/server/services/worker-queue.service";
 import type { FeedActionResult } from "@/modules/feed/feed.types";
 
@@ -120,7 +121,7 @@ export async function publishTrackNowAction(
     });
 
     if (upload.created) {
-      await createAuditLog(supabase, {
+      await createTrackRepository(supabase).createAuditLog({
         action: "upload.scheduled",
         entity_id: upload.id,
         entity_type: "youtube_upload",
@@ -203,19 +204,17 @@ export async function scheduleTrackAction(
         };
       }
 
-      const { error } = await supabase
-        .from("youtube_uploads")
-        .update({ scheduled_at: scheduledAt })
-        .eq("workspace_id", workspaceId)
-        .eq("id", upload.id)
-        .eq("status", "scheduled");
-
-      if (error) {
-        throw new Error(error.message);
-      }
+      await throwOnError(
+        supabase
+          .from("youtube_uploads")
+          .update({ scheduled_at: scheduledAt })
+          .eq("workspace_id", workspaceId)
+          .eq("id", upload.id)
+          .eq("status", "scheduled"),
+      );
     }
 
-    await createAuditLog(supabase, {
+    await createTrackRepository(supabase).createAuditLog({
       action: "upload.scheduled",
       entity_id: upload.id,
       entity_type: "youtube_upload",
@@ -272,20 +271,16 @@ async function loadLatestRender(
   supabase: Supabase,
   input: { trackId: string; workspaceId: string },
 ) {
-  const { data, error } = await supabase
-    .from("video_renders")
-    .select("id, status")
-    .eq("workspace_id", input.workspaceId)
-    .eq("track_id", input.trackId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data;
+  return selectMaybeSingle(
+    supabase
+      .from("video_renders")
+      .select("id, status")
+      .eq("workspace_id", input.workspaceId)
+      .eq("track_id", input.trackId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  );
 }
 
 async function createOrReuseYoutubeUpload(input: {
@@ -315,26 +310,24 @@ async function createOrReuseYoutubeUpload(input: {
   // existing one stays allowed.
   await input.ensureCanCreate?.();
 
-  const { data, error } = await input.supabase
-    .from("youtube_uploads")
-    .insert({
-      description: track.description,
-      privacy_status: "private",
-      scheduled_at: input.scheduledAt,
-      status: input.status,
-      tags: track.tags,
-      title: track.title ?? "Bussin Track",
-      track_id: input.trackId,
-      video_render_id: input.videoRenderId,
-      workspace_id: input.workspaceId,
-      youtube_channel_id: channel.id,
-    })
-    .select("id, status")
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
+  const data = await selectSingle(
+    input.supabase
+      .from("youtube_uploads")
+      .insert({
+        description: track.description,
+        privacy_status: "private",
+        scheduled_at: input.scheduledAt,
+        status: input.status,
+        tags: track.tags,
+        title: track.title ?? "Bussin Track",
+        track_id: input.trackId,
+        video_render_id: input.videoRenderId,
+        workspace_id: input.workspaceId,
+        youtube_channel_id: channel.id,
+      })
+      .select("id, status")
+      .single(),
+  );
 
   return { ...data, created: true };
 }
@@ -357,108 +350,36 @@ async function assertUploadWithinPlanLimits(
   }
 }
 
-function createUploadLimitsRepository(
-  supabase: Supabase,
-): UploadLimitsRepository {
-  return {
-    async countScheduledUploads(workspaceId) {
-      const { count, error } = await supabase
-        .from("youtube_uploads")
-        .select("id", { count: "exact", head: true })
-        .eq("workspace_id", workspaceId)
-        .eq("status", "scheduled");
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return count ?? 0;
-    },
-    async getEffectivePlan(workspaceId) {
-      const { data, error } = await supabase
-        .from("subscriptions")
-        .select("plan, status")
-        .eq("workspace_id", workspaceId)
-        .maybeSingle();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data ? effectiveBillingPlan(data.plan, data.status) : null;
-    },
-    async getMonthlyUploadedCount(workspaceId) {
-      const period = getCurrentUsagePeriod();
-      const { data, error } = await supabase
-        .from("usage_counters")
-        .select("uploaded_videos_count")
-        .eq("workspace_id", workspaceId)
-        .eq("period_start", period.periodStart)
-        .eq("period_end", period.periodEnd)
-        .maybeSingle();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data?.uploaded_videos_count ?? 0;
-    },
-    async getMonthlyPendingUploadCount(workspaceId) {
-      const period = getCurrentUsagePeriod();
-      const { count, error } = await supabase
-        .from("youtube_uploads")
-        .select("id", { count: "exact", head: true })
-        .eq("workspace_id", workspaceId)
-        .is("scheduled_at", null)
-        .gte("created_at", period.periodStart)
-        .lt("created_at", period.periodEnd)
-        .in("status", ["draft", "uploading"]);
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return count ?? 0;
-    },
-  };
-}
-
 async function loadActiveYoutubeUpload(
   supabase: Supabase,
   input: { trackId: string; videoRenderId: string; workspaceId: string },
 ): Promise<ExistingYoutubeUpload | null> {
-  const { data, error } = await supabase
-    .from("youtube_uploads")
-    .select("id, status")
-    .eq("workspace_id", input.workspaceId)
-    .eq("track_id", input.trackId)
-    .eq("video_render_id", input.videoRenderId)
-    .in("status", ["draft", "scheduled", "uploading"])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data;
+  return selectMaybeSingle(
+    supabase
+      .from("youtube_uploads")
+      .select("id, status")
+      .eq("workspace_id", input.workspaceId)
+      .eq("track_id", input.trackId)
+      .eq("video_render_id", input.videoRenderId)
+      .in("status", ["draft", "scheduled", "uploading"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  );
 }
 
 async function loadTrackForUpload(
   supabase: Supabase,
   input: { trackId: string; workspaceId: string },
 ) {
-  const { data, error } = await supabase
-    .from("tracks")
-    .select("title, description, tags, status")
-    .eq("workspace_id", input.workspaceId)
-    .eq("id", input.trackId)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
+  const data = await selectMaybeSingle(
+    supabase
+      .from("tracks")
+      .select("title, description, tags, status")
+      .eq("workspace_id", input.workspaceId)
+      .eq("id", input.trackId)
+      .maybeSingle(),
+  );
 
   if (!data || data.status === "rejected") {
     throw new Error("Rejected tracks cannot be published.");
@@ -468,21 +389,17 @@ async function loadTrackForUpload(
 }
 
 async function loadDefaultChannel(supabase: Supabase, workspaceId: string) {
-  const { data, error } = await supabase
-    .from("youtube_channels")
-    .select("id")
-    .eq("workspace_id", workspaceId)
-    .eq("status", "connected")
-    .order("is_default", { ascending: false })
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data;
+  return selectMaybeSingle(
+    supabase
+      .from("youtube_channels")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .eq("status", "connected")
+      .order("is_default", { ascending: false })
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  );
 }
 
 async function enqueueRender(
@@ -502,94 +419,6 @@ async function enqueueYoutubeUpload(
   },
 ) {
   await enqueueWorkerQueueJob({ message, queueName: "youtube-upload-jobs" });
-}
-
-function createTrackRepository(supabase: Supabase): TrackRepository {
-  return {
-    async createAuditLog(input) {
-      return createAuditLog(supabase, input);
-    },
-    async createVideoRender(input: TablesInsert<"video_renders">) {
-      const { data, error } = await supabase
-        .from("video_renders")
-        .insert(input)
-        .select("*")
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data;
-    },
-    async getTrackById(input) {
-      const { data, error } = await supabase
-        .from("tracks")
-        .select("*")
-        .eq("workspace_id", input.workspaceId)
-        .eq("id", input.trackId)
-        .maybeSingle();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data;
-    },
-    async listTracks(workspaceId) {
-      const { data, error } = await supabase
-        .from("tracks")
-        .select("*")
-        .eq("workspace_id", workspaceId);
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data ?? [];
-    },
-    async updateTrack(input) {
-      const { data, error } = await supabase
-        .from("tracks")
-        .update(input.values)
-        .eq("id", input.trackId)
-        .select("*")
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data;
-    },
-  };
-}
-
-async function createAuditLog(
-  supabase: Supabase,
-  input: {
-    action: string;
-    entity_id?: string | null;
-    entity_type?: string | null;
-    metadata?: Record<string, unknown>;
-    user_id?: string | null;
-    workspace_id: string;
-  },
-) {
-  const { data, error } = await supabase
-    .from("audit_logs")
-    .insert({
-      ...input,
-      metadata: (input.metadata ?? {}) as Json,
-    })
-    .select("*")
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data;
 }
 
 function normalizeSchedule(value: FormDataEntryValue | null) {

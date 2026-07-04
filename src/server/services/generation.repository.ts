@@ -8,6 +8,11 @@ import type {
 import type { GenerationRequestRepository } from "@/server/services/generation-request.service";
 import { effectiveBillingPlan } from "@/server/services/plan-limits.service";
 import {
+  selectCount,
+  selectMaybeSingle,
+  selectSingle,
+} from "@/server/services/supabase-query";
+import {
   createUsageService,
   getCurrentUsagePeriod,
   type UsageRepository,
@@ -40,72 +45,42 @@ export function createGenerationRepository(
 ): GenerationRequestRepository {
   return {
     async createAuditLog(input) {
-      const { data, error } = await supabase
-        .from("audit_logs")
-        .insert({
-          ...input,
-          metadata: (input.metadata ?? {}) as Json,
-        })
-        .select("*")
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data;
+      return selectSingle(
+        supabase
+          .from("audit_logs")
+          .insert({
+            ...input,
+            metadata: (input.metadata ?? {}) as Json,
+          })
+          .select("*")
+          .single(),
+      );
     },
     async createGenerationRequest(input) {
-      const { data, error } = await supabase
-        .from("generation_requests")
-        .insert(input)
-        .select("*")
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data;
+      return selectSingle(
+        supabase.from("generation_requests").insert(input).select("*").single(),
+      );
     },
     async createPromptHistory(input) {
-      const { data, error } = await supabase
-        .from("prompt_history")
-        .insert(input)
-        .select("*")
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data;
+      return selectSingle(
+        supabase.from("prompt_history").insert(input).select("*").single(),
+      );
     },
     async createTrack(input: TablesInsert<"tracks">) {
-      const { data, error } = await supabase
-        .from("tracks")
-        .insert(input)
-        .select("*")
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data;
+      return selectSingle(
+        supabase.from("tracks").insert(input).select("*").single(),
+      );
     },
     async hasConnectedSunoAccount(workspaceId) {
-      const { count, error } = await supabase
-        .from("suno_connections")
-        .select("id", { count: "exact", head: true })
-        .eq("workspace_id", workspaceId)
-        .eq("status", "connected");
+      const count = await selectCount(
+        supabase
+          .from("suno_connections")
+          .select("id", { count: "exact", head: true })
+          .eq("workspace_id", workspaceId)
+          .eq("status", "connected"),
+      );
 
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return (count ?? 0) > 0;
+      return count > 0;
     },
     async getUsageSummary(workspaceId) {
       const period = getCurrentUsagePeriod();
@@ -160,32 +135,26 @@ export function createGenerationRepository(
 export function createUsageRepository(supabase: Supabase): UsageRepository {
   return {
     async getCurrentPlan(workspaceId) {
-      const { data, error } = await supabase
-        .from("subscriptions")
-        .select("plan, status")
-        .eq("workspace_id", workspaceId)
-        .maybeSingle();
-
-      if (error) {
-        throw new Error(error.message);
-      }
+      const data = await selectMaybeSingle(
+        supabase
+          .from("subscriptions")
+          .select("plan, status")
+          .eq("workspace_id", workspaceId)
+          .maybeSingle(),
+      );
 
       return data ? effectiveBillingPlan(data.plan, data.status) : null;
     },
     async getUsageCounter(input) {
-      const { data, error } = await supabase
-        .from("usage_counters")
-        .select("*")
-        .eq("workspace_id", input.workspaceId)
-        .eq("period_start", input.periodStart)
-        .eq("period_end", input.periodEnd)
-        .maybeSingle();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return data;
+      return selectMaybeSingle(
+        supabase
+          .from("usage_counters")
+          .select("*")
+          .eq("workspace_id", input.workspaceId)
+          .eq("period_start", input.periodStart)
+          .eq("period_end", input.periodEnd)
+          .maybeSingle(),
+      );
     },
     async incrementUsageCounter(input) {
       const rpcClient = supabase as unknown as IncrementUsageCounterRpcClient;
