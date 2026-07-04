@@ -1,3 +1,5 @@
+import type { GenerationRequestStatus } from "@/server/services/status-transition.service";
+
 export type FeedTrackStatus =
   | "generating"
   | "preview_ready"
@@ -35,12 +37,7 @@ export type FeedTrack = {
   youtubeVideoId: string | null;
 };
 
-export type FeedJobGroupStatus =
-  | "queued"
-  | "running"
-  | "completed"
-  | "failed"
-  | "cancelled";
+export type FeedJobGroupStatus = Exclude<GenerationRequestStatus, "draft">;
 
 export type FeedJobGroup = {
   createdAt: string;

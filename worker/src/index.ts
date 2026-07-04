@@ -3,6 +3,7 @@ import "dotenv/config";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "../../src/lib/database.types";
 import { createSecretsService } from "../../src/server/services/secrets.service";
 import { loadWorkerConfig, type WorkerConfig } from "./config";
 import { startHealthServer } from "./health";
@@ -77,12 +78,16 @@ async function main() {
     });
   }
 
-  const supabase = createClient(config.supabaseUrl, config.serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
+  const supabase = createClient<Database>(
+    config.supabaseUrl,
+    config.serviceRoleKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
     },
-  });
+  );
   const queue = createSupabaseQueueClient(supabase);
   const secrets = createSecretsService({
     encryptionKey: config.secretsEncryptionKey,

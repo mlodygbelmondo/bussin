@@ -4,6 +4,7 @@ import type { Database } from "@/lib/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { mockFeedData } from "@/modules/dev/mock-data";
 import { getPlanLimits } from "@/server/services/plan-limits.service";
+import { isGenerationRequestStatus } from "@/server/services/status-transition.service";
 import { createStorageSignedUrl } from "@/server/services/storage";
 import type {
   FeedData,
@@ -419,13 +420,7 @@ export function deriveRetryTarget(input: {
 }
 
 function toGroupStatus(status: string): FeedJobGroupStatus {
-  if (
-    status === "queued" ||
-    status === "running" ||
-    status === "completed" ||
-    status === "failed" ||
-    status === "cancelled"
-  ) {
+  if (isGenerationRequestStatus(status) && status !== "draft") {
     return status;
   }
 

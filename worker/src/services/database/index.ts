@@ -1,4 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database, Json } from "../../../../src/lib/database.types";
+import type {
+  TrackStatus,
+  VideoRenderStatus,
+  YoutubeUploadStatus,
+} from "../../../../src/server/services/status-transition.service";
 
 export type GenerationContext = {
   finalPrompt: string;
@@ -104,19 +110,19 @@ export type WorkerDatabaseService = {
   updateTrackStatus(input: {
     workspaceId: string;
     trackId: string;
-    status: string;
+    status: TrackStatus;
     failureReason?: string | null;
   }): Promise<void>;
   updateVideoRenderStatus(input: {
     workspaceId: string;
     videoRenderId: string;
-    status: string;
+    status: VideoRenderStatus;
     failureReason?: string | null;
   }): Promise<void>;
   updateYoutubeUploadStatus(input: {
     workspaceId: string;
     youtubeUploadId: string;
-    status: string;
+    status: YoutubeUploadStatus;
     failureReason?: string | null;
   }): Promise<void>;
 };
@@ -129,9 +135,9 @@ export class WorkerPlanLimitError extends Error {
 }
 
 export function createWorkerDatabaseService(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): WorkerDatabaseService {
-  const client = supabase as unknown as SupabaseDataClient;
+  const client = supabase;
 
   return {
     async createAuditLog(input) {
@@ -140,17 +146,14 @@ export function createWorkerDatabaseService(
           action: input.action,
           entity_id: input.entityId,
           entity_type: input.entityType,
-          metadata: input.metadata ?? {},
+          metadata: (input.metadata ?? {}) as Json,
           user_id: input.userId,
           workspace_id: input.workspaceId,
         }),
       );
     },
     async getGenerationContext(input) {
-      const request = await selectSingle<{
-        final_prompt: string | null;
-        status: string;
-      }>(
+      const request = await selectSingle(
         client
           .from("generation_requests")
           .select("final_prompt, status")
@@ -158,10 +161,7 @@ export function createWorkerDatabaseService(
           .eq("id", input.generationRequestId)
           .single(),
       );
-      const track = await selectSingle<{
-        suno_track_id: string | null;
-        title: string | null;
-      }>(
+      const track = await selectSingle(
         client
           .from("tracks")
           .select("title, suno_track_id")
@@ -182,10 +182,7 @@ export function createWorkerDatabaseService(
       };
     },
     async getRenderContext(input) {
-      const track = await selectSingle<{
-        audio_storage_path: string | null;
-        image_asset_id: string | null;
-      }>(
+      const track = await selectSingle(
         client
           .from("tracks")
           .select("audio_storage_path, image_asset_id")
@@ -201,7 +198,7 @@ export function createWorkerDatabaseService(
       let imageStoragePath: string | null = null;
 
       if (track.image_asset_id) {
-        const image = await selectSingle<{ storage_path: string | null }>(
+        const image = await selectSingle(
           client
             .from("image_assets")
             .select("storage_path")
@@ -212,7 +209,7 @@ export function createWorkerDatabaseService(
         imageStoragePath = image.storage_path;
       }
 
-      const upload = await selectMaybeSingle<{ id: string | null }>(
+      const upload = await selectMaybeSingle(
         client
           .from("youtube_uploads")
           .select("id")
@@ -231,11 +228,7 @@ export function createWorkerDatabaseService(
       };
     },
     async getSunoConnection(workspaceId) {
-      const connection = await selectMaybeSingle<{
-        id: string;
-        encrypted_api_url: string | null;
-        encrypted_cookie: string | null;
-      }>(
+      const connection = await selectMaybeSingle(
         client
           .from("suno_connections")
           .select("id, encrypted_api_url, encrypted_cookie")
@@ -270,15 +263,7 @@ export function createWorkerDatabaseService(
       );
     },
     async getYoutubeUploadContext(input) {
-      const upload = await selectSingle<{
-        description: string | null;
-        privacy_status: "private" | "unlisted" | "public";
-        tags: string[] | null;
-        title: string;
-        video_render_id: string | null;
-        youtube_channel_id: string | null;
-        youtube_video_id: string | null;
-      }>(
+      const upload = await selectSingle(
         client
           .from("youtube_uploads")
           .select(
@@ -293,10 +278,7 @@ export function createWorkerDatabaseService(
         throw new Error("YouTube upload is missing render or channel details.");
       }
 
-      const channel = await selectSingle<{
-        youtube_channel_id: string;
-        youtube_connection_id: string | null;
-      }>(
+      const channel = await selectSingle(
         client
           .from("youtube_channels")
           .select("youtube_channel_id, youtube_connection_id")
@@ -309,11 +291,7 @@ export function createWorkerDatabaseService(
         throw new Error("YouTube channel is missing connection details.");
       }
 
-      const connection = await selectSingle<{
-        encrypted_access_token: string | null;
-        encrypted_refresh_token: string | null;
-        token_expires_at: string | null;
-      }>(
+      const connection = await selectSingle(
         client
           .from("youtube_connections")
           .select(
@@ -331,7 +309,7 @@ export function createWorkerDatabaseService(
         throw new Error("YouTube connection is missing encrypted tokens.");
       }
 
-      const render = await selectSingle<{ video_storage_path: string | null }>(
+      const render = await selectSingle(
         client
           .from("video_renders")
           .select("video_storage_path")
@@ -547,8 +525,8 @@ export function createWorkerDatabaseService(
 }
 
 async function selectSingle<T>(
-  promise: Promise<QueryResponse<unknown>>,
-): Promise<T> {
+  promise: PromiseLike<QueryResult<T>>,
+): Promise<NonNullable<T>> {
   const { data, error } = await promise;
 
   if (error) {
@@ -559,11 +537,11 @@ async function selectSingle<T>(
     throw new Error("Expected one database row, found none.");
   }
 
-  return data as T;
+  return data;
 }
 
 async function selectMaybeSingle<T>(
-  promise: Promise<QueryResponse<unknown>>,
+  promise: PromiseLike<QueryResult<T>>,
 ): Promise<T | null> {
   const { data, error } = await promise;
 
@@ -571,10 +549,10 @@ async function selectMaybeSingle<T>(
     throw new Error(error.message);
   }
 
-  return data as T | null;
+  return data;
 }
 
-async function throwOnError(promise: Promise<QueryResponse<unknown>>) {
+async function throwOnError(promise: PromiseLike<QueryResult<unknown>>) {
   const { error } = await promise;
 
   if (error) {
@@ -597,29 +575,7 @@ function currentMonthlyPeriod() {
   };
 }
 
-type QueryResponse<T> = {
-  data: T | null;
+type QueryResult<T> = {
+  data: T;
   error: { message: string } | null;
-};
-
-type SupabaseDataClient = {
-  from(table: string): SupabaseQueryBuilder;
-  rpc(
-    functionName: string,
-    args?: Record<string, unknown>,
-  ): Promise<QueryResponse<unknown>>;
-};
-
-type SupabaseQueryBuilder = Promise<QueryResponse<unknown>> & {
-  eq(column: string, value: unknown): SupabaseQueryBuilder;
-  insert(values: Record<string, unknown>): Promise<QueryResponse<unknown>>;
-  limit(count: number): SupabaseQueryBuilder;
-  maybeSingle(): Promise<QueryResponse<unknown | null>>;
-  order(
-    column: string,
-    options?: { ascending?: boolean },
-  ): SupabaseQueryBuilder;
-  select(columns?: string): SupabaseQueryBuilder;
-  single(): Promise<QueryResponse<unknown>>;
-  update(values: Record<string, unknown>): SupabaseQueryBuilder;
 };

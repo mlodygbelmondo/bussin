@@ -1,3 +1,13 @@
+/**
+ * Single source of truth for every job/track status in the product.
+ *
+ * The TRANSITIONS map defines both the legal status values per entity and
+ * the allowed moves between them. The exported *_STATUSES arrays and
+ * *Status types are derived from it, so they cannot drift. The DB columns
+ * are plain text — this module is the only thing standing between a typo
+ * like "canceled" and production. App code and worker/src both import it;
+ * never write a status string literal outside this vocabulary.
+ */
 const TRANSITIONS = {
   generation_requests: {
     draft: ["queued", "cancelled"],
@@ -39,6 +49,43 @@ const TRANSITIONS = {
 } as const;
 
 export type StatusEntity = keyof typeof TRANSITIONS;
+
+export type GenerationRequestStatus =
+  keyof (typeof TRANSITIONS)["generation_requests"];
+export type TrackStatus = keyof (typeof TRANSITIONS)["tracks"];
+export type VideoRenderStatus = keyof (typeof TRANSITIONS)["video_renders"];
+export type YoutubeUploadStatus = keyof (typeof TRANSITIONS)["youtube_uploads"];
+
+export const GENERATION_REQUEST_STATUSES = Object.keys(
+  TRANSITIONS.generation_requests,
+) as GenerationRequestStatus[];
+export const TRACK_STATUSES = Object.keys(TRANSITIONS.tracks) as TrackStatus[];
+export const VIDEO_RENDER_STATUSES = Object.keys(
+  TRANSITIONS.video_renders,
+) as VideoRenderStatus[];
+export const YOUTUBE_UPLOAD_STATUSES = Object.keys(
+  TRANSITIONS.youtube_uploads,
+) as YoutubeUploadStatus[];
+
+export function isTrackStatus(value: string): value is TrackStatus {
+  return value in TRANSITIONS.tracks;
+}
+
+export function isVideoRenderStatus(value: string): value is VideoRenderStatus {
+  return value in TRANSITIONS.video_renders;
+}
+
+export function isYoutubeUploadStatus(
+  value: string,
+): value is YoutubeUploadStatus {
+  return value in TRANSITIONS.youtube_uploads;
+}
+
+export function isGenerationRequestStatus(
+  value: string,
+): value is GenerationRequestStatus {
+  return value in TRANSITIONS.generation_requests;
+}
 
 export class InvalidStatusTransitionError extends Error {
   constructor(
