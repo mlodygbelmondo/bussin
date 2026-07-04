@@ -3,7 +3,7 @@ import {
   deriveRetryTarget,
   deriveTrackStatus,
 } from "@/modules/feed/feed.queries";
-import { getTrackStatusPresentation } from "@/modules/feed/feed-cards";
+import { getTrackStatusPresentation } from "@/modules/feed/status-presentation";
 
 type TrackInput = Parameters<typeof deriveTrackStatus>[0]["track"];
 type RenderInput = Parameters<typeof deriveTrackStatus>[0]["render"];
