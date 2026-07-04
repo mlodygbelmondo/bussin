@@ -18,9 +18,12 @@ export type SunoLimits = {
 export type SunoGenerationInput = {
   finalPrompt: string;
   makeInstrumental: boolean;
+  model?: string;
   style: string;
+  styleWeight?: number;
   title: string;
   waitAudio: boolean;
+  weirdnessConstraint?: number;
   callbackUrl?: string;
 };
 

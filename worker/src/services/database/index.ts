@@ -12,10 +12,18 @@ import type {
 } from "../../../../src/server/services/status-transition.service";
 import { createStatusWriter } from "../../../../src/server/services/status-writer.service";
 
+export type GenerationSunoOptions = {
+  model?: string;
+  styleWeight?: number;
+  weirdnessConstraint?: number;
+  lyrics?: string;
+};
+
 export type GenerationContext = {
   finalPrompt: string;
   existingSunoTrackId?: string | null;
   requestStatus: string;
+  sunoOptions: GenerationSunoOptions;
   title: string;
 };
 
@@ -103,6 +111,11 @@ export type WorkerDatabaseService = {
     audioStoragePath: string;
     sourceAudioUrl?: string | null;
   }): Promise<void>;
+  saveTrackCover(input: {
+    workspaceId: string;
+    trackId: string;
+    storagePath: string;
+  }): Promise<void>;
   saveVideoRenderOutput(input: {
     workspaceId: string;
     videoRenderId: string;
@@ -165,7 +178,7 @@ export function createWorkerDatabaseService(
       const request = await selectSingle(
         client
           .from("generation_requests")
-          .select("final_prompt, status")
+          .select("final_prompt, status, suno_options")
           .eq("workspace_id", input.workspaceId)
           .eq("id", input.generationRequestId)
           .single(),
@@ -187,6 +200,7 @@ export function createWorkerDatabaseService(
         existingSunoTrackId: track.suno_track_id,
         finalPrompt: request.final_prompt,
         requestStatus: request.status,
+        sunoOptions: parseGenerationSunoOptions(request.suno_options),
         title: track.title ?? "Bussin track",
       };
     },
@@ -466,6 +480,46 @@ export function createWorkerDatabaseService(
           .eq("id", input.trackId),
       );
     },
+    async saveTrackCover(input) {
+      const track = await selectSingle(
+        client
+          .from("tracks")
+          .select("image_asset_id")
+          .eq("workspace_id", input.workspaceId)
+          .eq("id", input.trackId)
+          .single(),
+      );
+
+      // A user-chosen image always wins over the generated cover.
+      if (track.image_asset_id) {
+        return;
+      }
+
+      const image = await selectSingle(
+        client
+          .from("image_assets")
+          .upsert(
+            {
+              file_name: `${input.trackId}-cover.jpg`,
+              mime_type: "image/jpeg",
+              source: "generated_later",
+              storage_path: input.storagePath,
+              workspace_id: input.workspaceId,
+            },
+            { onConflict: "workspace_id,storage_path" },
+          )
+          .select("id")
+          .single(),
+      );
+
+      await throwOnError(
+        client
+          .from("tracks")
+          .update({ image_asset_id: image.id })
+          .eq("workspace_id", input.workspaceId)
+          .eq("id", input.trackId),
+      );
+    },
     async saveVideoRenderOutput(input) {
       await throwOnError(
         client
@@ -497,6 +551,37 @@ export function createWorkerDatabaseService(
       await statusWriter.updateYoutubeUploadStatus(input);
     },
   };
+}
+
+/**
+ * Maps the request's stored suno_options (validator shape, snake_case) to the
+ * adapter's knobs; unknown or malformed values are dropped, never fatal.
+ */
+function parseGenerationSunoOptions(value: Json): GenerationSunoOptions {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  const record = value as Record<string, unknown>;
+  const options: GenerationSunoOptions = {};
+
+  if (typeof record.model === "string" && record.model) {
+    options.model = record.model;
+  }
+
+  if (typeof record.style_weight === "number") {
+    options.styleWeight = record.style_weight;
+  }
+
+  if (typeof record.weirdness === "number") {
+    options.weirdnessConstraint = record.weirdness;
+  }
+
+  if (typeof record.lyrics === "string" && record.lyrics.trim()) {
+    options.lyrics = record.lyrics.trim();
+  }
+
+  return options;
 }
 
 function currentMonthlyPeriod() {

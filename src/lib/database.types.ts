@@ -90,6 +90,7 @@ export type Database = {
           scheduled_at: string | null;
           status: string;
           style: string;
+          suno_options: Json;
           target_youtube_channel_id: string | null;
           track_count: number;
           updated_at: string;
@@ -109,6 +110,7 @@ export type Database = {
           scheduled_at?: string | null;
           status?: string;
           style: string;
+          suno_options?: Json;
           target_youtube_channel_id?: string | null;
           track_count: number;
           updated_at?: string;
@@ -128,6 +130,7 @@ export type Database = {
           scheduled_at?: string | null;
           status?: string;
           style?: string;
+          suno_options?: Json;
           target_youtube_channel_id?: string | null;
           track_count?: number;
           updated_at?: string;

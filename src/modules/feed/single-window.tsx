@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { APP_NAME } from "@/lib/app-public-config";
 import { createFeedGenerationAction } from "@/modules/feed/feed.actions";
+import { SUNO_MODELS } from "@/server/validators/generation.validator";
 import { FeedList } from "@/modules/feed/feed-cards";
 import type {
   FeedConnections,
@@ -39,6 +40,12 @@ import type {
 } from "@/modules/feed/feed.types";
 
 const TRACK_COUNT_OPTIONS = [1, 2, 3, 4];
+const SUNO_MODEL_LABELS: Record<string, string> = {
+  V4_5: "v4.5",
+  V4_5PLUS: "v4.5+",
+  V5: "v5",
+  V5_5: "v5.5 (newest)",
+};
 const DURATION_OPTIONS = [
   { label: "1 min", value: 60 },
   { label: "2 min", value: 120 },
@@ -295,6 +302,10 @@ function PromptBox({
   const [prompt, setPrompt] = useState("");
   const [trackCount, setTrackCount] = useState(2);
   const [duration, setDuration] = useState(180);
+  const [model, setModel] = useState<string>(SUNO_MODELS[0]);
+  const [styleWeight, setStyleWeight] = useState(0.5);
+  const [weirdness, setWeirdness] = useState(0.5);
+  const [lyrics, setLyrics] = useState("");
   const canSubmit = prompt.trim().length >= 2 && !pending && !disabled;
   const durationLabel =
     DURATION_OPTIONS.find((option) => option.value === duration)?.label ??
@@ -336,6 +347,10 @@ function PromptBox({
         formData.append("prompt", prompt);
         formData.append("track_count", String(trackCount));
         formData.append("duration_seconds", String(duration));
+        formData.append("model", model);
+        formData.append("style_weight", String(styleWeight));
+        formData.append("weirdness", String(weirdness));
+        formData.append("lyrics", lyrics);
       }
 
       const result = await createFeedGenerationAction(formData);
@@ -360,6 +375,10 @@ function PromptBox({
     >
       <input name="track_count" type="hidden" value={trackCount} />
       <input name="duration_seconds" type="hidden" value={duration} />
+      <input name="model" type="hidden" value={model} />
+      <input name="style_weight" type="hidden" value={styleWeight} />
+      <input name="weirdness" type="hidden" value={weirdness} />
+      <input name="lyrics" type="hidden" value={lyrics} />
       <Textarea
         className={
           hasHistory
@@ -403,9 +422,17 @@ function PromptBox({
           <OptionsMenu
             disabled={disabled || pending}
             duration={duration}
+            lyrics={lyrics}
+            model={model}
             setDuration={setDuration}
+            setLyrics={setLyrics}
+            setModel={setModel}
+            setStyleWeight={setStyleWeight}
             setTrackCount={setTrackCount}
+            setWeirdness={setWeirdness}
+            styleWeight={styleWeight}
             trackCount={trackCount}
+            weirdness={weirdness}
           />
           <p className="text-xs text-muted-foreground">
             {trackCount} {trackCount === 1 ? "track" : "tracks"} •{" "}
@@ -434,15 +461,31 @@ function PromptBox({
 function OptionsMenu({
   disabled,
   duration,
+  lyrics,
+  model,
   setDuration,
+  setLyrics,
+  setModel,
+  setStyleWeight,
   setTrackCount,
+  setWeirdness,
+  styleWeight,
   trackCount,
+  weirdness,
 }: {
   disabled: boolean;
   duration: number;
+  lyrics: string;
+  model: string;
   setDuration: (value: number) => void;
+  setLyrics: (value: string) => void;
+  setModel: (value: string) => void;
+  setStyleWeight: (value: number) => void;
   setTrackCount: (value: number) => void;
+  setWeirdness: (value: number) => void;
+  styleWeight: number;
   trackCount: number;
+  weirdness: number;
 }) {
   return (
     <DropdownMenu>
@@ -452,7 +495,7 @@ function OptionsMenu({
           Options
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64 space-y-3 p-3">
+      <DropdownMenuContent align="end" className="w-72 space-y-3 p-3">
         <label className="block space-y-1.5 text-sm font-medium">
           Tracks
           <select
@@ -484,6 +527,72 @@ function OptionsMenu({
               </option>
             ))}
           </select>
+        </label>
+        <label className="block space-y-1.5 text-sm font-medium">
+          Model
+          <select
+            aria-label="Suno model"
+            className="h-9 w-full rounded-md border border-border bg-input px-2 text-sm text-foreground outline-none focus-visible:border-ring"
+            data-testid="suno-model-select"
+            onChange={(event) => setModel(event.target.value)}
+            value={model}
+          >
+            {SUNO_MODELS.map((value) => (
+              <option key={value} value={value}>
+                {SUNO_MODEL_LABELS[value] ?? value}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block space-y-1.5 text-sm font-medium">
+          <span className="flex items-center justify-between">
+            Style influence
+            <span className="font-mono text-xs text-muted-foreground">
+              {Math.round(styleWeight * 100)}%
+            </span>
+          </span>
+          <input
+            aria-label="Style influence"
+            className="w-full accent-primary"
+            data-testid="style-weight-slider"
+            max={100}
+            min={0}
+            onChange={(event) =>
+              setStyleWeight(Number(event.target.value) / 100)
+            }
+            type="range"
+            value={Math.round(styleWeight * 100)}
+          />
+        </label>
+        <label className="block space-y-1.5 text-sm font-medium">
+          <span className="flex items-center justify-between">
+            Weirdness
+            <span className="font-mono text-xs text-muted-foreground">
+              {Math.round(weirdness * 100)}%
+            </span>
+          </span>
+          <input
+            aria-label="Weirdness"
+            className="w-full accent-primary"
+            data-testid="weirdness-slider"
+            max={100}
+            min={0}
+            onChange={(event) => setWeirdness(Number(event.target.value) / 100)}
+            type="range"
+            value={Math.round(weirdness * 100)}
+          />
+        </label>
+        <label className="block space-y-1.5 text-sm font-medium">
+          Lyrics <span className="text-muted-foreground">(optional)</span>
+          <textarea
+            aria-label="Lyrics"
+            className="min-h-16 w-full resize-none rounded-md border border-border bg-input px-2 py-1.5 text-sm font-normal text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring"
+            data-testid="lyrics-input"
+            maxLength={3000}
+            onChange={(event) => setLyrics(event.target.value)}
+            placeholder="Leave empty for instrumental"
+            value={lyrics}
+          />
         </label>
       </DropdownMenuContent>
     </DropdownMenu>

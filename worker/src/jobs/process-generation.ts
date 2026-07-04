@@ -33,6 +33,7 @@ export async function processGenerationJob(
   const generation = context.existingSunoTrackId
     ? { sunoTrackId: context.existingSunoTrackId }
     : await services.suno.createCustomGeneration({
+        options: context.sunoOptions,
         prompt: context.finalPrompt,
         title: context.title,
         trackId: payload.trackId,

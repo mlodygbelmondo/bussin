@@ -13,6 +13,12 @@ export type SunoService = {
     title: string;
     workspaceId: string;
     trackId: string;
+    options?: {
+      model?: string;
+      styleWeight?: number;
+      weirdnessConstraint?: number;
+      lyrics?: string;
+    };
   }): Promise<{ sunoTrackId: string }>;
   getLimits(input: { workspaceId: string }): Promise<SunoLimits>;
   getTrackStatus(input: {
@@ -21,7 +27,7 @@ export type SunoService = {
     trackId: string;
   }): Promise<
     | { status: "processing" | "failed"; failureReason?: string }
-    | { status: "ready"; audioUrl: string }
+    | { status: "ready"; audioUrl: string; imageUrl: string | null }
   >;
 };
 
@@ -123,13 +129,20 @@ export function createSunoService(input: {
       );
 
       try {
+        const lyrics = request.options?.lyrics;
+
         return await adapter.createCustomGeneration({
           callbackUrl: input.callbackUrl,
-          finalPrompt: request.prompt,
-          makeInstrumental: true,
-          style: "instrumental",
+          // With lyrics the prompt field carries them and the music
+          // description moves to style; instrumental stays the default.
+          finalPrompt: lyrics ?? request.prompt,
+          makeInstrumental: !lyrics,
+          model: request.options?.model,
+          style: lyrics ? request.prompt.slice(0, 1000) : "instrumental",
+          styleWeight: request.options?.styleWeight,
           title: request.title,
           waitAudio: false,
+          weirdnessConstraint: request.options?.weirdnessConstraint,
         });
       } catch (error) {
         return handleCredentialFailure({
@@ -165,7 +178,11 @@ export function createSunoService(input: {
         });
 
         if (status.status === "ready") {
-          return { audioUrl: status.audioUrl, status: "ready" };
+          return {
+            audioUrl: status.audioUrl,
+            imageUrl: status.track.imageUrl ?? null,
+            status: "ready",
+          };
         }
 
         if (status.status === "failed") {

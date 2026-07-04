@@ -167,6 +167,7 @@ describe("worker job processors", () => {
       copyAudioFromUrl: vi
         .fn()
         .mockResolvedValue(`${workspaceId}/audio/${trackId}.mp3`),
+      copyCoverFromUrl: vi.fn(),
       downloadAudio: vi.fn(),
       downloadImage: vi.fn(),
       downloadVideo: vi.fn(),
@@ -231,6 +232,7 @@ describe("render video worker", () => {
     });
     const storage: WorkerStorageService = {
       copyAudioFromUrl: vi.fn(),
+      copyCoverFromUrl: vi.fn(),
       downloadAudio: vi.fn().mockResolvedValue(audio),
       downloadImage: vi.fn().mockResolvedValue(image),
       downloadVideo: vi.fn(),
@@ -282,6 +284,7 @@ describe("render video worker", () => {
     });
     const storage: WorkerStorageService = {
       copyAudioFromUrl: vi.fn(),
+      copyCoverFromUrl: vi.fn(),
       downloadAudio: vi.fn().mockResolvedValue(new Uint8Array([1])),
       downloadImage: vi.fn(),
       downloadVideo: vi.fn(),
@@ -324,6 +327,7 @@ describe("YouTube upload worker", () => {
     });
     const storage: WorkerStorageService = {
       copyAudioFromUrl: vi.fn(),
+      copyCoverFromUrl: vi.fn(),
       downloadAudio: vi.fn(),
       downloadImage: vi.fn(),
       downloadVideo: vi.fn().mockResolvedValue(video),
@@ -387,6 +391,7 @@ describe("YouTube upload worker", () => {
     });
     const storage: WorkerStorageService = {
       copyAudioFromUrl: vi.fn(),
+      copyCoverFromUrl: vi.fn(),
       downloadAudio: vi.fn(),
       downloadImage: vi.fn(),
       downloadVideo: vi.fn().mockResolvedValue(video),
@@ -430,6 +435,7 @@ describe("YouTube upload worker", () => {
     });
     const storage: WorkerStorageService = {
       copyAudioFromUrl: vi.fn(),
+      copyCoverFromUrl: vi.fn(),
       downloadAudio: vi.fn(),
       downloadImage: vi.fn(),
       downloadVideo: vi.fn(),
@@ -468,6 +474,7 @@ function makeDatabaseService(
     createAuditLog: vi.fn().mockResolvedValue(undefined),
     getGenerationContext: vi.fn().mockResolvedValue({
       finalPrompt: "test prompt",
+      sunoOptions: {},
       title: "Test Track",
     }),
     getRenderContext: vi.fn(),
@@ -486,6 +493,7 @@ function makeDatabaseService(
     updateSunoConnectionLimits: vi.fn().mockResolvedValue(undefined),
     saveSunoTrackId: vi.fn().mockResolvedValue(undefined),
     saveTrackAudio: vi.fn().mockResolvedValue(undefined),
+    saveTrackCover: vi.fn().mockResolvedValue(undefined),
     saveVideoRenderOutput: vi.fn().mockResolvedValue(undefined),
     saveYoutubeVideoId: vi.fn().mockResolvedValue(undefined),
     updateTrackStatus: vi.fn().mockResolvedValue(undefined),

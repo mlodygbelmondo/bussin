@@ -17,9 +17,12 @@ const sunoGenerationInputSchema = z
     callbackUrl: z.string().url().optional(),
     finalPrompt: z.string().trim().min(1).max(5000),
     makeInstrumental: z.boolean(),
+    model: z.string().trim().min(1).optional(),
     style: z.string().trim().min(1).max(1000),
+    styleWeight: z.number().min(0).max(1).optional(),
     title: z.string().trim().min(1).max(100),
     waitAudio: z.boolean(),
+    weirdnessConstraint: z.number().min(0).max(1).optional(),
   })
   .strict();
 
@@ -36,7 +39,7 @@ export function createSunoAdapter(input: {
 }): SunoAdapter {
   const baseUrl = new URL(input.apiUrl);
   const fetchImpl = input.fetch ?? fetch;
-  const model = input.model ?? "V4_5";
+  const defaultModel = input.model ?? "V5_5";
   const timeoutMs = input.timeoutMs ?? 30_000;
   const validateNetwork = !input.fetch;
 
@@ -50,12 +53,14 @@ export function createSunoAdapter(input: {
           customMode: true,
           instrumental: parsed.makeInstrumental,
           make_instrumental: parsed.makeInstrumental,
-          model,
+          model: parsed.model ?? defaultModel,
           prompt: parsed.finalPrompt,
           style: parsed.style,
+          styleWeight: parsed.styleWeight,
           title: parsed.title,
           waitAudio: parsed.waitAudio,
           wait_audio: parsed.waitAudio,
+          weirdnessConstraint: parsed.weirdnessConstraint,
         },
         credential: input.credential,
         fetchImpl,

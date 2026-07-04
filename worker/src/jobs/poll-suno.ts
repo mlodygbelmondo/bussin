@@ -67,6 +67,28 @@ export async function pollSunoJob(
     trackId: payload.trackId,
     workspaceId: payload.workspaceId,
   });
+
+  // Suno ships free cover art with every track; persist it as the track's
+  // image asset (video background + future thumbnail) unless the user
+  // already picked one. Never fail the track over a missing cover.
+  if (status.imageUrl) {
+    try {
+      const coverStoragePath = await services.storage.copyCoverFromUrl({
+        imageUrl: status.imageUrl,
+        trackId: payload.trackId,
+        workspaceId: payload.workspaceId,
+      });
+
+      await services.database.saveTrackCover({
+        storagePath: coverStoragePath,
+        trackId: payload.trackId,
+        workspaceId: payload.workspaceId,
+      });
+    } catch {
+      // Cover is best-effort; the track ships without one.
+    }
+  }
+
   await services.database.updateTrackStatus({
     status: "preview_ready",
     trackId: payload.trackId,

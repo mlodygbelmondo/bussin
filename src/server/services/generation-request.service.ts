@@ -107,6 +107,7 @@ export function createGenerationRequestService(input: {
         status: "queued",
         prompt_summary: prompt.prompt_summary,
         final_prompt: prompt.final_prompt,
+        suno_options: parsed.suno_options,
       });
       const tracks: TrackRecord[] = [];
 

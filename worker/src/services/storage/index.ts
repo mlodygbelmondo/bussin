@@ -3,12 +3,18 @@ import { isIP } from "node:net";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const MAX_AUDIO_DOWNLOAD_BYTES = 50 * 1024 * 1024;
+const MAX_COVER_DOWNLOAD_BYTES = 10 * 1024 * 1024;
 
 export type WorkerStorageService = {
   copyAudioFromUrl(input: {
     workspaceId: string;
     trackId: string;
     audioUrl: string;
+  }): Promise<string>;
+  copyCoverFromUrl(input: {
+    workspaceId: string;
+    trackId: string;
+    imageUrl: string;
   }): Promise<string>;
   downloadAudio(storagePath: string): Promise<Uint8Array>;
   downloadImage(storagePath: string): Promise<Uint8Array>;
@@ -63,6 +69,38 @@ export function createWorkerStorageService(
           contentType: response.headers.get("content-type") ?? "audio/mpeg",
           upsert: true,
         });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return storagePath;
+    },
+    async copyCoverFromUrl(input) {
+      const imageUrl = new URL(input.imageUrl);
+
+      await assertSafeAudioUrl(imageUrl, resolveHostname);
+
+      const response = await fetchImpl(imageUrl.toString());
+
+      if (!response.ok) {
+        throw new Error(`Cover download failed with ${response.status}.`);
+      }
+
+      const contentType = response.headers.get("content-type") ?? "image/jpeg";
+
+      if (!contentType.toLowerCase().startsWith("image/")) {
+        throw new Error("Cover download returned an unsupported content type.");
+      }
+
+      const image = await readResponseWithLimit(
+        response,
+        MAX_COVER_DOWNLOAD_BYTES,
+      );
+      const storagePath = `${input.workspaceId}/covers/${input.trackId}.jpg`;
+      const { error } = await client.storage
+        .from("image-assets")
+        .upload(storagePath, image, { contentType, upsert: true });
 
       if (error) {
         throw new Error(error.message);

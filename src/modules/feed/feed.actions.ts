@@ -6,12 +6,19 @@ import type { FeedActionResult } from "@/modules/feed/feed.types";
 import { createGenerationRepository } from "@/server/services/generation.repository";
 import { createGenerationRequestService } from "@/server/services/generation-request.service";
 import { enqueueWorkerQueueJob } from "@/server/services/worker-queue.service";
-import { createGenerationRequestSchema } from "@/server/validators/generation.validator";
+import {
+  createGenerationRequestSchema,
+  SUNO_MODELS,
+} from "@/server/validators/generation.validator";
 
 const promptSchema = z.object({
   duration_seconds: z.number().int().min(30).max(600),
+  lyrics: z.string().trim().max(3000),
+  model: z.enum(SUNO_MODELS),
   prompt: z.string().trim().min(2).max(300),
+  style_weight: z.number().min(0).max(1),
   track_count: z.number().int().min(1).max(4),
+  weirdness: z.number().min(0).max(1),
 });
 
 const trackDetailsSchema = z.object({
@@ -34,6 +41,12 @@ export async function createFeedGenerationAction(
         duration_seconds: input.duration_seconds,
         publish_mode: "draft",
         style: input.prompt,
+        suno_options: {
+          lyrics: input.lyrics || undefined,
+          model: input.model,
+          style_weight: input.style_weight,
+          weirdness: input.weirdness,
+        },
         track_count: input.track_count,
       });
 
@@ -69,8 +82,12 @@ export async function createFeedGenerationAction(
     schema: promptSchema,
     values: (form) => ({
       duration_seconds: Number(form.get("duration_seconds")),
+      lyrics: String(form.get("lyrics") ?? ""),
+      model: String(form.get("model") ?? SUNO_MODELS[0]),
       prompt: String(form.get("prompt") ?? ""),
+      style_weight: Number(form.get("style_weight") ?? 0.5),
       track_count: Number(form.get("track_count")),
+      weirdness: Number(form.get("weirdness") ?? 0.5),
     }),
   });
 }
