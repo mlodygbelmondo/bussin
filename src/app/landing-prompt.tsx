@@ -23,7 +23,7 @@ export function LandingPrompt({ prompts }: { prompts: string[] }) {
 
   return (
     <>
-      <div className="prompt-card mt-10 rounded-2xl border border-line bg-panel/80 p-3 text-left backdrop-blur-sm transition-shadow focus-within:border-primary/60">
+      <div className="prompt-card mt-10 rounded-xl border border-line bg-popover/90 p-3 text-left shadow-[var(--shadow-elevated)] backdrop-blur-sm transition-shadow focus-within:border-primary/60">
         <Textarea
           className="resize-none border-0 bg-transparent text-base shadow-none focus-visible:border-transparent focus-visible:ring-0"
           data-testid="landing-prompt-input"

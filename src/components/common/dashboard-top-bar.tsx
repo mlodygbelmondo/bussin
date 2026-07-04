@@ -1,5 +1,6 @@
-import { ArrowLeft, AudioLines } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { PulseMark } from "@/components/common/logo";
 import { APP_NAME } from "@/lib/app-public-config";
 import { cn } from "@/lib/utils";
 
@@ -21,9 +22,7 @@ export function DashboardTopBar({ className }: DashboardTopBarProps) {
           className="flex items-center gap-2.5 text-lg tracking-tight"
           href="/dashboard"
         >
-          <span className="flex size-7 items-center justify-center rounded-md bg-primary/15 text-primary">
-            <AudioLines className="size-4" strokeWidth={2.4} />
-          </span>
+          <PulseMark className="size-5.5" />
           <span className="font-display font-semibold tracking-tight">
             {APP_NAME}
           </span>

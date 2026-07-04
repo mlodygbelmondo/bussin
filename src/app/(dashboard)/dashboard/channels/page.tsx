@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Reveal } from "@/components/common/motion";
 import { isMockMode, mockUser } from "@/lib/app-config";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -54,14 +55,16 @@ export default async function ChannelsPage({
     >
       <ChannelsTopBar />
       <div className="mx-auto max-w-[1536px] px-4 py-6 lg:px-9">
-        <header className="mb-5">
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-            Channels
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Keep your YouTube destinations connected and ready to publish.
-          </p>
-        </header>
+        <Reveal>
+          <header className="mb-5">
+            <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
+              Channels
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Keep your YouTube destinations connected and ready to publish.
+            </p>
+          </header>
+        </Reveal>
 
         {youtubeError ? (
           <p
@@ -72,15 +75,19 @@ export default async function ChannelsPage({
           </p>
         ) : null}
 
-        <ChannelsHero data={data} />
+        <Reveal delay={0.06}>
+          <ChannelsHero data={data} />
+        </Reveal>
 
-        <section className="mt-7">
-          <ChannelsToolbar data={data} query={query} status={status} />
-          <ChannelsGrid
-            channels={filteredChannels}
-            planLimitReached={data.hasPlanLimitReached}
-          />
-        </section>
+        <Reveal delay={0.12}>
+          <section className="mt-7">
+            <ChannelsToolbar data={data} query={query} status={status} />
+            <ChannelsGrid
+              channels={filteredChannels}
+              planLimitReached={data.hasPlanLimitReached}
+            />
+          </section>
+        </Reveal>
 
         <ChannelLimitFooter data={data} />
       </div>

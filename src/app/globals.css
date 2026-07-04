@@ -3,55 +3,57 @@
 
 /*
  * Bussin design tokens — the single source of truth for color, radius, and
- * type. Components must consume these tokens (directly or via the Tailwind
- * theme below); never introduce new colors, gradients, or shadows outside the
- * approved Night Studio patterns. See docs/design-system.md for the rules.
+ * type. "Ember on Ink": neutral near-black surfaces, one hot ember accent,
+ * and the aurora backdrop (indigo → magenta → ember) as the only permitted
+ * gradient. Components must consume these tokens (directly or via the
+ * Tailwind theme below); never introduce new colors, gradients, or shadows
+ * outside them. See docs/design-system.md for the rules.
  */
 :root {
   --radius: 0.75rem;
 
-  /* Neutral surfaces, darkest to lightest */
-  --background: oklch(0.145 0.018 290);
-  --panel: oklch(0.175 0.02 290);
-  --panel-strong: oklch(0.21 0.022 290);
-  --panel-soft: oklch(0.16 0.018 290);
-  --card: oklch(0.185 0.022 290);
-  --popover: oklch(0.2 0.022 290);
-  --input: oklch(0.24 0.025 290);
+  /* Ink surfaces: neutral near-black, darkest to lightest */
+  --background: oklch(0.13 0.004 70);
+  --panel: oklch(0.165 0.004 70);
+  --panel-strong: oklch(0.21 0.005 70);
+  --panel-soft: oklch(0.15 0.004 70);
+  --card: oklch(0.175 0.004 70);
+  --popover: oklch(0.195 0.005 70);
+  --input: oklch(0.225 0.005 70);
 
   /* Text */
-  --foreground: oklch(0.965 0.006 290);
-  --card-foreground: oklch(0.965 0.006 290);
-  --popover-foreground: oklch(0.965 0.006 290);
-  --muted-foreground: oklch(0.7 0.02 290);
+  --foreground: oklch(0.97 0.003 80);
+  --card-foreground: oklch(0.97 0.003 80);
+  --popover-foreground: oklch(0.97 0.003 80);
+  --muted-foreground: oklch(0.69 0.008 80);
 
   /* Borders and focus */
-  --border: oklch(0.28 0.025 290);
-  --line: oklch(0.26 0.022 290);
-  --ring: oklch(0.66 0.21 293 / 55%);
+  --border: oklch(0.28 0.006 70);
+  --line: oklch(0.245 0.005 70);
+  --ring: oklch(0.66 0.215 356 / 55%);
 
-  /* Brand: violet is the only accent */
-  --primary: oklch(0.66 0.21 293);
-  --primary-foreground: oklch(0.985 0.005 290);
-  --secondary: oklch(0.235 0.04 263);
-  --secondary-foreground: oklch(0.9 0.02 260);
-  --muted: oklch(0.235 0.036 263);
-  --accent: oklch(0.28 0.075 286);
-  --accent-foreground: oklch(0.94 0.02 270);
+  /* Brand: ember (hot magenta-coral) is the only accent */
+  --primary: oklch(0.66 0.215 356);
+  --primary-foreground: oklch(0.985 0.005 80);
+  --secondary: oklch(0.235 0.008 70);
+  --secondary-foreground: oklch(0.9 0.008 80);
+  --muted: oklch(0.235 0.007 70);
+  --accent: oklch(0.26 0.02 356);
+  --accent-foreground: oklch(0.94 0.01 0);
 
-  /* Night Studio signature backdrop */
-  --aurora-1: oklch(0.52 0.24 295);
-  --aurora-2: oklch(0.58 0.24 345);
-  --aurora-3: oklch(0.45 0.18 262);
+  /* Ember aurora signature backdrop: indigo → magenta → ember */
+  --aurora-1: oklch(0.5 0.19 265);
+  --aurora-2: oklch(0.6 0.24 350);
+  --aurora-3: oklch(0.68 0.17 45);
   --shadow-elevated:
     0 1px 0 0 oklch(1 0 0 / 4%) inset, 0 12px 32px -8px oklch(0 0 0 / 45%);
 
   /* State colors: reserved for state, never decoration */
-  --destructive: oklch(0.63 0.2 24);
-  --success: oklch(0.68 0.15 173);
-  --warning: oklch(0.78 0.14 77);
-  --danger: oklch(0.64 0.2 24);
-  --info: oklch(0.72 0.13 220);
+  --destructive: oklch(0.62 0.2 25);
+  --success: oklch(0.7 0.15 165);
+  --warning: oklch(0.79 0.14 80);
+  --danger: oklch(0.62 0.2 25);
+  --info: oklch(0.72 0.12 225);
 }
 
 @theme inline {
@@ -112,12 +114,12 @@ body {
 }
 
 ::selection {
-  background: oklch(0.66 0.21 293 / 42%);
+  background: oklch(0.66 0.215 356 / 42%);
   color: var(--foreground);
 }
 
 .prompt-card:focus-within {
-  border-color: oklch(0.66 0.21 293 / 60%);
+  border-color: oklch(0.66 0.215 356 / 60%);
   box-shadow:
     0 0 0 1px var(--ring),
     0 0 48px -12px var(--primary);
@@ -140,8 +142,70 @@ body {
   animation-timing-function: ease-in-out;
 }
 
+/* Hero sparks — placed by <Starfield />; twinkle is opacity + a small rise. */
+@keyframes star-twinkle {
+  0%,
+  100% {
+    opacity: 0.08;
+    transform: translate3d(0, 0, 0);
+  }
+
+  50% {
+    opacity: 0.75;
+    transform: translate3d(0, -6px, 0);
+  }
+}
+
+.star {
+  animation: star-twinkle 7s ease-in-out infinite;
+  background: oklch(0.92 0.01 80);
+  border-radius: 9999px;
+  position: absolute;
+}
+
+.star-ember {
+  background: var(--primary);
+}
+
+/* Barely-there grain for the hero only — part of the ambient signature. */
+.grain::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  content: "";
+  inset: 0;
+  opacity: 0.035;
+  pointer-events: none;
+  position: absolute;
+}
+
+/* One-shot ember celebration when a track flips from composing to ready. */
+@keyframes track-ready-pop {
+  0% {
+    box-shadow: 0 0 0 0 oklch(0.66 0.215 356 / 0%);
+    transform: scale(1);
+  }
+
+  30% {
+    box-shadow:
+      inset 0 0 0 1px oklch(0.66 0.215 356 / 45%),
+      0 0 36px -6px var(--primary);
+    transform: scale(1.012);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 oklch(0.66 0.215 356 / 0%);
+    transform: scale(1);
+  }
+}
+
+.track-ready-pop {
+  animation: track-ready-pop 0.7s ease-out;
+  border-radius: var(--radius);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .aurora-blob {
+  .aurora-blob,
+  .star,
+  .track-ready-pop {
     animation: none;
   }
 }
@@ -181,8 +245,8 @@ body {
 }
 
 .status-pill-violet {
-  background: oklch(0.58 0.22 292 / 16%);
-  color: oklch(0.78 0.16 292);
+  background: oklch(0.6 0.21 356 / 16%);
+  color: oklch(0.78 0.15 356);
 }
 
 @keyframes shimmer {

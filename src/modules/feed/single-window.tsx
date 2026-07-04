@@ -3,17 +3,20 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
-  AudioLines,
+  ArrowUp,
   ChevronDown,
+  Loader2,
   LogOut,
   Music2,
   Settings2,
-  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { signOut } from "@/app/auth/actions";
 import { Aurora } from "@/components/common/aurora";
+import { PulseMark } from "@/components/common/logo";
+import { Reveal } from "@/components/common/motion";
+import { Starfield } from "@/components/common/starfield";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
@@ -88,9 +91,18 @@ export function SingleWindow({
 
   return (
     <div
-      className="flex min-h-[100dvh] flex-col"
+      className="relative isolate flex min-h-[100dvh] flex-col"
       data-testid="screen-single-window"
     >
+      {hasHistory ? null : (
+        <div
+          aria-hidden="true"
+          className="grain pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+        >
+          <Aurora />
+          <Starfield />
+        </div>
+      )}
       <TopBar
         accountMenuExtras={accountMenuExtras}
         usage={feed.usage}
@@ -101,30 +113,31 @@ export function SingleWindow({
           className={
             hasHistory
               ? "sticky top-14 z-10 -mx-4 border-b border-line/60 bg-background/70 px-4 pt-5 pb-4 backdrop-blur-md"
-              : "relative flex flex-1 flex-col justify-center overflow-hidden pt-20 pb-12"
+              : "relative flex flex-1 flex-col justify-center pt-20 pb-12"
           }
         >
-          {hasHistory ? null : <Aurora className="-z-10" />}
           <div className="mx-auto w-full max-w-3xl">
             {hasHistory ? null : (
-              <div className="mb-8 text-center">
-                <h1 className="font-display text-4xl font-bold tracking-tight text-center">
+              <Reveal className="mb-8 text-center">
+                <h1 className="text-center font-display text-4xl font-bold tracking-tight sm:text-5xl">
                   What should we make today?
                 </h1>
-                <p className="mx-auto mt-3 max-w-2xl text-base text-muted-foreground">
+                <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
                   Describe it. We&apos;ll create the track, render the video,
                   and get it ready for YouTube.
                 </p>
-              </div>
+              </Reveal>
             )}
-            {remaining === 0 ? <UsageLimitBanner /> : null}
-            {!connectionsReady ? (
-              <ConnectGate connections={feed.connections} />
-            ) : null}
-            <PromptBox
-              disabled={!sunoReady || remaining === 0}
-              hasHistory={hasHistory}
-            />
+            <Reveal delay={hasHistory ? 0 : 0.1}>
+              {remaining === 0 ? <UsageLimitBanner /> : null}
+              {!connectionsReady ? (
+                <ConnectGate connections={feed.connections} />
+              ) : null}
+              <PromptBox
+                disabled={!sunoReady || remaining === 0}
+                hasHistory={hasHistory}
+              />
+            </Reveal>
           </div>
         </section>
         {isError ? (
@@ -208,9 +221,7 @@ function TopBar({
           className="flex items-center gap-2.5 text-lg tracking-tight"
           href="/dashboard"
         >
-          <span className="flex size-7 items-center justify-center rounded-md bg-primary/15 text-primary">
-            <AudioLines className="size-4.5" strokeWidth={2.4} />
-          </span>
+          <PulseMark className="size-5.5" />
           <span className="font-display font-semibold tracking-tight">
             {APP_NAME}
           </span>
@@ -343,7 +354,7 @@ function PromptBox({
 
   return (
     <form
-      className="prompt-card rounded-2xl border border-line bg-panel/80 p-3 text-left backdrop-blur-sm transition-shadow focus-within:border-primary/60"
+      className="prompt-card rounded-xl border border-line bg-popover/90 p-3 text-left shadow-[var(--shadow-elevated)] backdrop-blur-sm transition-shadow focus-within:border-primary/60"
       onSubmit={(event) => {
         event.preventDefault();
         submit(event.currentTarget);
@@ -403,9 +414,19 @@ function PromptBox({
             {durationLabel}
           </p>
         </div>
-        <Button data-testid="prompt-submit" disabled={!canSubmit} type="submit">
-          <Sparkles className="size-4" />
-          {pending ? "Starting…" : "Create"}
+        <Button
+          aria-label={pending ? "Starting…" : "Create"}
+          className="rounded-full transition-transform hover:scale-105 active:scale-95"
+          data-testid="prompt-submit"
+          disabled={!canSubmit}
+          size="icon"
+          type="submit"
+        >
+          {pending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <ArrowUp className="size-4" strokeWidth={2.6} />
+          )}
         </Button>
       </div>
     </form>

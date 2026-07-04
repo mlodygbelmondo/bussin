@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  AudioWaveform,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -13,6 +12,8 @@ import {
   Sparkles,
   TriangleAlert,
 } from "lucide-react";
+import { PulseMark } from "@/components/common/logo";
+import { Reveal } from "@/components/common/motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -75,9 +76,7 @@ export default async function OnboardingPage({
             className="font-display flex items-center gap-3 text-2xl font-semibold tracking-tight text-foreground"
             href="/"
           >
-            <span className="grid size-8 place-items-center text-primary">
-              <AudioWaveform className="size-8" />
-            </span>
+            <PulseMark className="size-7" />
             {APP_NAME}
           </Link>
           <div className="flex items-center gap-4 text-sm">
@@ -95,25 +94,29 @@ export default async function OnboardingPage({
 
         <OnboardingStepper currentStep={currentStep} />
 
-        <section className="mt-12 text-center">
-          <h1 className="font-display text-4xl leading-tight font-semibold tracking-tight text-foreground md:text-5xl">
-            Let&apos;s get you set up
-          </h1>
-          <p className="mt-3 text-base text-muted-foreground">
-            Connect your accounts and you&apos;re ready to create.
-          </p>
-        </section>
+        <Reveal>
+          <section className="mt-12 text-center">
+            <h1 className="font-display text-4xl leading-tight font-semibold tracking-tight text-foreground md:text-5xl">
+              Let&apos;s get you set up
+            </h1>
+            <p className="mt-3 text-base text-muted-foreground">
+              Connect your accounts and you&apos;re ready to create.
+            </p>
+          </section>
+        </Reveal>
 
-        <section className="mt-8 grid gap-5 xl:grid-cols-4">
-          <SunoCard connection={suno} errorMessage={sunoError} />
-          <YoutubeCard connected={youtubeConnected} />
-          <DefaultsCard
-            data={data}
-            defaultChannelTitle={defaultChannel?.title}
-            formId="onboarding-complete-form"
-          />
-          <FirstGenerationCard ready={sunoConnected && youtubeConnected} />
-        </section>
+        <Reveal delay={0.08}>
+          <section className="mt-8 grid gap-5 xl:grid-cols-4">
+            <SunoCard connection={suno} errorMessage={sunoError} />
+            <YoutubeCard connected={youtubeConnected} />
+            <DefaultsCard
+              data={data}
+              defaultChannelTitle={defaultChannel?.title}
+              formId="onboarding-complete-form"
+            />
+            <FirstGenerationCard ready={sunoConnected && youtubeConnected} />
+          </section>
+        </Reveal>
 
         <section className="mt-5 rounded-xl border border-line bg-card/80 p-6 md:flex md:items-center md:justify-between md:gap-8">
           <div className="flex max-w-2xl items-center gap-5">

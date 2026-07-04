@@ -1,26 +1,46 @@
-# Bussin Design System
+# Bussin Design System — "Ember on Ink"
 
-The visual language for the single-window app. Tokens live in
-`src/app/globals.css`; primitives in `src/components/ui`. Everything visible
-must be expressible with these — if a screen needs a color, spacing, or
-radius that is not here, the system changes first, not the screen.
+The visual language for the single-window app, inspired by the confidence of
+Lovable's studio UI: near-black neutral surfaces, one huge friendly hero
+moment over an aurora gradient, quiet 1px-bordered panels everywhere else.
+Tokens live in `src/app/globals.css`; primitives in `src/components/ui`.
+Everything visible must be expressible with these — if a screen needs a
+color, spacing, or radius that is not here, the system changes first, not
+the screen.
+
+The living reference is the dev-only playground at `/design` — every
+primitive, variant, and state rendered on the real tokens.
 
 ## Principles
 
-1. **One accent.** Violet (`--primary`) is the only brand color on any view.
-   Cyan/blue (`--info`) appears only in informational state chips and links.
-2. **State colors mean state.** `--success`, `--warning`, `--danger`,
+1. **Ink, not tint.** Surfaces are neutral near-black (`--background` and
+   friends carry almost no chroma). No violet-gray washes — color belongs to
+   the accent and the aurora, never to surfaces.
+2. **One accent: ember.** Hot magenta-coral (`--primary`) is the only brand
+   color on any view. It marks the primary action, active nav, focus, and
+   selection — and nothing else. Cyan/blue (`--info`) appears only in
+   informational state chips and links.
+3. **State colors mean state.** `--success`, `--warning`, `--danger`,
    `--info` mark job/track status and feedback. Never use them decoratively.
-3. **Borders before shadows.** Surfaces are flat: `--panel`/`--card` fill with
-   a 1px `--line`/`--border` border. Elevation is reserved for floating
-   surfaces via `--shadow-elevated` and the hero prompt focus glow.
-4. **One ambient signature.** Aurora ambient gradients are permitted only via
-   the shared `<Aurora />` component as hero or empty-state backdrops — never
-   on buttons, cards, borders, or text. No background grids or textures.
-5. **Typography does the hierarchy.** Bricolage Grotesque (`--font-display`)
-   is only for h1/h2-level headlines and the wordmark. Geist Sans is for all
-   body/UI text; Geist Mono is for numeric, duration, counter, and timestamp
-   values.
+4. **Borders before shadows.** Surfaces are flat: `--panel`/`--card` fill
+   with a 1px `--line`/`--border` border. Elevation exists only for floating
+   surfaces (dialogs, popovers, dropdowns) via `--shadow-elevated`, plus the
+   hero prompt focus glow (`.prompt-card`).
+5. **One ambient signature.** The ember aurora (indigo → magenta → ember,
+   `--aurora-1/2/3`) is permitted only via the shared `<Aurora />` component
+   as a hero or empty-state backdrop that fades into ink — never on buttons,
+   cards, borders, or text. The hero backdrop may be completed by
+   `<Starfield />` (sparse twinkling sparks) and the `.grain` overlay —
+   these three travel together and appear only behind hero prompts. The
+   only other gradient in the product is the logo mark. No other textures,
+   grids, or particles anywhere.
+6. **Typography does the hierarchy.** Bricolage Grotesque (`--font-display`)
+   is only for h1/h2-level headlines and the wordmark — big, confident,
+   Lovable-style. Geist Sans is for all body/UI text; Geist Mono is for
+   numeric, duration, counter, and timestamp values.
+7. **Snappy is a design token.** No full-page loaders for pages that can
+   stream; skeletons (`Skeleton`, `.bussin-shimmer`) only where data is
+   genuinely async; optimistic UI for mutations the user just performed.
 
 ## Tokens
 
@@ -29,9 +49,10 @@ radius that is not here, the system changes first, not the screen.
 | Token                       | Use                                  |
 | --------------------------- | ------------------------------------ |
 | `--background`              | page background                      |
-| `--panel` / `--card`        | cards, feed items, modals            |
+| `--panel` / `--card`        | cards, feed items, sidebars          |
 | `--panel-strong`            | raised elements inside a card (rare) |
 | `--panel-soft` / `--accent` | hover fills, selected states         |
+| `--popover`                 | dialogs, dropdowns, floating panels  |
 | `--input`                   | form control fills                   |
 
 ### Text
@@ -46,35 +67,60 @@ focus rings (3px, 35% alpha — already built into primitives).
 
 ### Brand & state
 
-`--primary` (violet) for the primary action and active nav;
+`--primary` (ember, oklch hue 356) for the primary action and active nav;
 `--secondary`/`--muted` for neutral fills; `--destructive`/`--danger`,
 `--success`, `--warning`, `--info` for state only.
 
-Aurora colors (`--aurora-1`, `--aurora-2`, `--aurora-3`) are backdrop-only and
-must be used through `<Aurora />`.
+Aurora colors (`--aurora-1` indigo, `--aurora-2` magenta, `--aurora-3`
+ember-orange) are backdrop-only and must be used through `<Aurora />`.
 
 ### Radius
 
 `--radius` = 0.75rem. Use `rounded-md`/`rounded-lg` from the theme scale.
-Avatars and dots may be `rounded-full`. Nothing else.
+The hero prompt card may use `rounded-xl`. Avatars and dots may be
+`rounded-full`. Nothing else.
 
 ### Spacing & type
 
 Tailwind defaults (4px base). Type scale in practice: `text-xs` meta,
-`text-sm` body, `text-base` inputs, `text-lg`–`text-2xl` headings. Use
-`font-display` only for h1/h2-level headlines and the brand wordmark; use
-`font-mono` only for durations, counters, and timestamps.
+`text-sm` body, `text-base` inputs, `text-lg`–`text-2xl` headings, with
+`font-display` hero headlines allowed up to `text-5xl`. Use `font-mono`
+only for durations, counters, and timestamps.
 
 ## Components
 
 Use the primitives in `src/components/ui` (Button, Card, Badge, Input,
 Textarea, Dialog, DropdownMenu, Skeleton, Table, Toaster). They consume
-tokens only. Status display uses `Badge` variants; the legacy `.status-pill`
-classes exist only for unrouted legacy modules.
+tokens only — raw palette classes (`violet-200`, `slate-950`, hex values)
+are banned in product code. Status display uses `Badge` variants; the
+legacy `.status-pill` classes exist only for unrouted legacy modules.
 
-Buttons: `default` (solid violet) is the one primary action per view;
+Buttons: `default` (solid ember) is the one primary action per view;
 `outline`/`secondary` for everything else; `ghost` for icon buttons;
 `destructive` only for irreversible actions.
+
+## Motion
+
+Motion is part of the identity, not garnish. The library is `motion`
+(`motion/react`); shared primitives live in `src/components/common/motion.tsx`
+(`MotionProvider`, `Reveal`, `staggerDelay`, `EASE_OUT`).
+
+1. **Enter-only stagger reveals.** Page content cascades in — fade +
+   8px rise, ~40–60ms apart, capped at ~320ms total — while the top bar
+   stays put. No exit animations, no route-transition libraries, no
+   `template.tsx` remounts.
+2. **The hero is the stage.** The ambient signature (drifting aurora,
+   twinkling `<Starfield />`, `.grain`) lives behind hero prompts only.
+   Every other screen is calm: reveals and micro-interactions, no ambient.
+3. **Celebrate the payoff.** When a track flips from composing to ready,
+   the card gets a one-shot ember glow-pop (`.track-ready-pop`, ~700ms).
+   That is the only celebration effect in the product.
+4. **Transform and opacity only.** Never animate layout properties.
+   `MotionProvider` sets `reducedMotion="user"`, and every CSS animation
+   (`.aurora-blob`, `.star`, `.track-ready-pop`) is disabled under
+   `prefers-reduced-motion` — new animations must follow both rules.
+5. **Nothing fights the feed.** The feed re-renders on a 4s poll; entrance
+   animations run only when an element mounts, never on data refresh.
 
 ## States
 
@@ -82,3 +128,9 @@ Every async surface ships loading (Skeleton), empty (EmptyState component),
 and error (plain text in `--danger` with a retry affordance) states.
 Mutations confirm via toast (sonner). Add `data-testid` selectors for
 Playwright on interactive elements.
+
+## Responsive
+
+Desktop-first, optimized for 1280px+. Every screen must remain fully
+usable with no horizontal scroll, clipping, or overlap down to 375px.
+Audit widths: 375 / 768 / 1440.

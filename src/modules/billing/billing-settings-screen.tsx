@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { DashboardTopBar } from "@/components/common/dashboard-top-bar";
+import { Reveal } from "@/components/common/motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -71,13 +72,19 @@ export function BillingSettingsScreen({
     >
       <TopBar />
       <div className="mx-auto grid max-w-[1120px] gap-5 px-4 py-6 lg:px-9">
-        <PageHeader activeRoute={activeRoute} data={data} />
-        <WorkspaceNav activeRoute={activeRoute} />
-        {activeRoute === "billing" ? (
-          <BillingOverview data={data} />
-        ) : (
-          <SettingsOverview data={data} />
-        )}
+        <Reveal>
+          <PageHeader activeRoute={activeRoute} data={data} />
+        </Reveal>
+        <Reveal delay={0.06}>
+          <WorkspaceNav activeRoute={activeRoute} />
+        </Reveal>
+        <Reveal delay={0.12}>
+          {activeRoute === "billing" ? (
+            <BillingOverview data={data} />
+          ) : (
+            <SettingsOverview data={data} />
+          )}
+        </Reveal>
       </div>
     </main>
   );

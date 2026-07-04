@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
+import { MotionProvider } from "@/components/common/motion";
 import { Toaster } from "@/components/ui/sonner";
 import { APP_NAME } from "@/lib/app-public-config";
 import { QueryProvider } from "@/providers/query-provider";
@@ -37,8 +38,10 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col bg-background text-foreground">
         <QueryProvider>
-          {children}
-          <Toaster closeButton richColors />
+          <MotionProvider>
+            {children}
+            <Toaster closeButton richColors />
+          </MotionProvider>
         </QueryProvider>
       </body>
     </html>

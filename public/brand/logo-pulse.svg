@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="ember" x1="4" y1="44" x2="44" y2="4" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e5306f"/>
+      <stop offset="0.55" stop-color="#f5484e"/>
+      <stop offset="1" stop-color="#ff8a3d"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="18" width="7" height="12" rx="3.5" fill="url(#ember)"/>
+  <rect x="16" y="8" width="7" height="32" rx="3.5" fill="url(#ember)"/>
+  <rect x="26" y="14" width="7" height="20" rx="3.5" fill="url(#ember)"/>
+  <rect x="36" y="21" width="7" height="6" rx="3" fill="url(#ember)"/>
+</svg>

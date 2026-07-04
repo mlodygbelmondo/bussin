@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
-      className="relative w-full overflow-x-auto rounded-lg border border-violet-200/10 bg-slate-950/20"
+      className="relative w-full overflow-x-auto rounded-lg border border-line bg-panel-soft/40"
       data-slot="table-container"
     >
       <table
@@ -19,7 +19,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
 function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
-      className={cn("[&_tr]:border-b [&_tr]:border-violet-200/10", className)}
+      className={cn("[&_tr]:border-b [&_tr]:border-line", className)}
       data-slot="table-header"
       {...props}
     />
@@ -39,10 +39,7 @@ function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
 function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
   return (
     <tfoot
-      className={cn(
-        "border-t border-violet-200/10 bg-muted/40 font-medium",
-        className,
-      )}
+      className={cn("border-t border-line bg-muted/40 font-medium", className)}
       data-slot="table-footer"
       {...props}
     />
@@ -53,7 +50,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   return (
     <tr
       className={cn(
-        "border-b border-violet-200/10 transition-colors hover:bg-violet-500/10 data-[state=selected]:bg-violet-500/10",
+        "border-b border-line transition-colors hover:bg-accent/40 data-[state=selected]:bg-accent/60",
         className,
       )}
       data-slot="table-row"
@@ -79,7 +76,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
   return (
     <td
       className={cn(
-        "p-3 align-middle whitespace-nowrap text-slate-200",
+        "p-3 align-middle whitespace-nowrap text-foreground",
         className,
       )}
       data-slot="table-cell"

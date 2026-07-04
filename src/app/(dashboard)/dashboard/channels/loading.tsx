@@ -9,7 +9,6 @@ export default function ChannelsLoading() {
     >
       <DashboardTopBar />
       <div className="mx-auto max-w-[1536px] px-4 py-6 lg:px-9">
-        <p className="text-sm text-muted-foreground">Loading your studio…</p>
         <Skeleton className="mt-3 h-9 w-36" />
         <Skeleton className="mt-3 h-5 w-96 max-w-full" />
         <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_380px]">

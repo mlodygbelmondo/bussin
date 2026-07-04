@@ -1,12 +1,4 @@
-import {
-  AudioLines,
-  CheckCircle2,
-  LifeBuoy,
-  Mail,
-  PlayCircle,
-  SquarePlay,
-  UserRound,
-} from "lucide-react";
+import { CheckCircle2, LifeBuoy, Mail, UserRound } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type React from "react";
@@ -16,6 +8,8 @@ import {
   PendingPromptNotice,
 } from "@/app/auth/auth-client-fields";
 import { Aurora } from "@/components/common/aurora";
+import { PulseMark } from "@/components/common/logo";
+import { Reveal } from "@/components/common/motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -55,14 +49,20 @@ export async function AuthScreen({
   }
 
   return (
-    <main className="min-h-[100dvh] bg-background text-foreground">
+    <main className="relative isolate min-h-[100dvh] overflow-hidden bg-background text-foreground">
+      <div
+        aria-hidden="true"
+        className="grain pointer-events-none absolute inset-0 -z-10"
+      >
+        <Aurora />
+      </div>
       <section className="mx-auto flex min-h-[100dvh] w-full max-w-[1200px] flex-col px-4 py-5 sm:px-6 lg:px-8">
         <header className="flex items-center justify-between gap-4">
           <Link
             className="font-display flex items-center gap-3 text-[26px] font-semibold tracking-normal"
             href="/"
           >
-            <LogoMark />
+            <PulseMark className="size-7" />
             {APP_NAME}
           </Link>
           <div className="hidden items-center gap-5 text-sm text-muted-foreground sm:flex">
@@ -77,32 +77,48 @@ export async function AuthScreen({
         <div className="grid flex-1 items-center gap-8 py-8 xl:grid-cols-[minmax(0,1fr)_480px] xl:gap-12">
           <ValuePanel />
 
-          <Card className="mx-auto w-full max-w-[480px] gap-0 overflow-hidden p-0">
-            <nav aria-label="Authentication" className="grid grid-cols-2">
-              <AuthTab
-                active={activePanel === "login"}
-                href={authHref("/login", next)}
-                label="Sign in"
-              />
-              <AuthTab
-                active={activePanel === "signup"}
-                href={authHref("/signup", next)}
-                label="Sign up"
-              />
-            </nav>
-            <AuthForm error={params.error} kind={activePanel} next={next} />
-          </Card>
+          <Reveal className="mx-auto w-full max-w-[480px]" delay={0.08}>
+            <Card className="w-full gap-0 overflow-hidden p-0">
+              <nav aria-label="Authentication" className="grid grid-cols-2">
+                <AuthTab
+                  active={activePanel === "login"}
+                  href={authHref("/login", next)}
+                  label="Sign in"
+                />
+                <AuthTab
+                  active={activePanel === "signup"}
+                  href={authHref("/signup", next)}
+                  label="Sign up"
+                />
+              </nav>
+              <AuthForm error={params.error} kind={activePanel} next={next} />
+            </Card>
+          </Reveal>
         </div>
       </section>
     </main>
   );
 }
 
+const valuePoints = [
+  {
+    text: "Create unique instrumental tracks in any style or mood.",
+    title: "Generate",
+  },
+  {
+    text: "Instantly preview and refine your sound with our player.",
+    title: "Preview",
+  },
+  {
+    text: "Publish to YouTube with a single click and grow your audience.",
+    title: "Publish",
+  },
+];
+
 function ValuePanel() {
   return (
-    <aside className="relative hidden overflow-hidden xl:block">
-      <Aurora />
-      <div className="relative">
+    <aside className="relative hidden xl:block">
+      <Reveal className="relative">
         <h1 className="font-display max-w-[570px] text-[clamp(2.4rem,3vw,3.35rem)] leading-[1.16] font-medium tracking-normal">
           Create. Preview.
           <br />
@@ -114,33 +130,38 @@ function ValuePanel() {
           preview in high quality, and publish directly to YouTube.
         </p>
 
-        <div className="mt-7 grid max-w-[440px] gap-5">
-          <Feature
-            icon={<AudioLines className="size-7 text-primary" />}
-            text="Create unique instrumental tracks in any style or mood."
-            title="Generate"
-          />
-          <Feature
-            icon={<PlayCircle className="size-7 text-primary" />}
-            text="Instantly preview and refine your sound with our player."
-            title="Preview"
-          />
-          <Feature
-            icon={<SquarePlay className="size-7 text-primary" />}
-            text="Publish to YouTube with a single click and grow your audience."
-            title="Publish"
-          />
+        <div className="mt-9 grid max-w-[440px] gap-7">
+          {valuePoints.map((point, index) => (
+            <div className="grid grid-cols-[2rem_1fr] gap-3" key={point.title}>
+              <span className="pt-0.5 font-mono text-xs text-primary">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <div>
+                <h3 className="text-base font-medium">{point.title}</h3>
+                <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
+                  {point.text}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
+      </Reveal>
 
-      <div className="relative mt-10 max-w-[430px] rounded-lg border border-line bg-card p-5">
-        <p className="text-sm leading-6 text-card-foreground">
-          {APP_NAME} is my secret weapon for creating studio-quality
-          instrumentals in minutes.
+      <Reveal
+        className="relative mt-12 max-w-[430px] border-l-2 border-line pl-5"
+        delay={0.14}
+      >
+        <p className="text-sm leading-6 text-foreground">
+          &ldquo;{APP_NAME} is my secret weapon for creating studio-quality
+          instrumentals in minutes.&rdquo;
         </p>
-        <p className="mt-5 text-sm font-medium">Alex M.</p>
-        <p className="text-xs text-muted-foreground">Music Producer</p>
-      </div>
+        <p className="mt-4 text-sm font-medium">
+          Alex M.{" "}
+          <span className="font-normal text-muted-foreground">
+            — Music Producer
+          </span>
+        </p>
+      </Reveal>
     </aside>
   );
 }
@@ -308,42 +329,6 @@ function Field({
         ) : null}
       </span>
     </label>
-  );
-}
-
-function Feature({
-  icon,
-  text,
-  title,
-}: {
-  icon: React.ReactNode;
-  text: string;
-  title: string;
-}) {
-  return (
-    <div className="grid grid-cols-[56px_1fr] gap-4">
-      <div className="grid size-14 place-items-center rounded-lg border border-line bg-panel">
-        {icon}
-      </div>
-      <div>
-        <h3 className="text-base font-medium">{title}</h3>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
-      </div>
-    </div>
-  );
-}
-
-function LogoMark() {
-  return (
-    <span className="flex h-9 w-8 items-center justify-center gap-1">
-      {[18, 27, 34, 25, 16].map((height, index) => (
-        <span
-          className="w-1 rounded-full bg-primary"
-          key={`${height}-${index}`}
-          style={{ height }}
-        />
-      ))}
-    </span>
   );
 }
 

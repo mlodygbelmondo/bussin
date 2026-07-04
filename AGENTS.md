@@ -50,12 +50,16 @@ superseded.
 
 ## Design System
 
-`docs/design-system.md` is binding. Tokens live in `src/app/globals.css`;
-components consume tokens only. Hard rules: violet (`--primary`) is the
-only accent; state colors (`--success`, `--warning`, `--danger`, `--info`)
-mark state, never decoration; flat surfaces with 1px borders — no
-gradients, glassmorphism, glows, or background textures; status display
-uses the `Badge` component variants.
+`docs/design-system.md` is binding ("Ember on Ink"). Tokens live in
+`src/app/globals.css`; components consume tokens only. Hard rules: ember
+(`--primary`) is the only accent; state colors (`--success`, `--warning`,
+`--danger`, `--info`) mark state, never decoration; flat surfaces with 1px
+borders; the only ambient effects are the hero backdrop trio (`<Aurora />`,
+`<Starfield />`, `.grain`) plus the logo-mark gradient — nothing else gets
+gradients, glassmorphism, glows, or textures; status display uses the
+`Badge` component variants. Motion: `motion/react` via the primitives in
+`src/components/common/motion.tsx`, enter-only reveals, transform/opacity
+only, reduced-motion respected (see the Motion section of the design doc).
 
 ## Repository Map
 

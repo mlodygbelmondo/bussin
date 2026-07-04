@@ -15,7 +15,9 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useRef, useState, useTransition } from "react";
+import { motion } from "motion/react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { EASE_OUT, staggerDelay } from "@/components/common/motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +37,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
 import { updateTrackDetailsAction } from "@/modules/feed/feed.actions";
 import type {
   FeedActionResult,
@@ -104,10 +107,11 @@ export function FeedList({
 }) {
   return (
     <div className="space-y-4 pt-2" data-testid="feed">
-      {groups.map((group) => (
+      {groups.map((group, index) => (
         <JobGroupCard
           channelTitle={channelTitle}
           group={group}
+          index={index}
           key={group.id}
         />
       ))}
@@ -118,18 +122,27 @@ export function FeedList({
 function JobGroupCard({
   channelTitle,
   group,
+  index,
 }: {
   channelTitle: string | null;
   group: FeedJobGroup;
+  index: number;
 }) {
   const { pending, run } = useFeedAction();
   const isActive = group.status === "queued" || group.status === "running";
   const groupStatus = getJobGroupStatusPresentation(group.status);
 
   return (
-    <article
+    <motion.article
+      animate={{ opacity: 1, y: 0 }}
       className="overflow-hidden rounded-xl border border-line bg-card/80"
       data-testid="job-group"
+      initial={{ opacity: 0, y: 8 }}
+      transition={{
+        delay: staggerDelay(index),
+        duration: 0.4,
+        ease: EASE_OUT,
+      }}
     >
       <header className="flex items-start justify-between gap-3 px-5 py-4">
         <div className="min-w-0">
@@ -212,7 +225,7 @@ function JobGroupCard({
           ))}
         </div>
       ) : null}
-    </article>
+    </motion.article>
   );
 }
 
@@ -226,10 +239,14 @@ function TrackCard({
   const { pending, run } = useFeedAction();
   const [editing, setEditing] = useState(false);
   const [scheduling, setScheduling] = useState(false);
+  const justReady = useJustBecameReady(track.status);
 
   return (
     <div
-      className="px-5 py-3.5 transition-colors hover:bg-panel-soft/60"
+      className={cn(
+        "px-5 py-3.5 transition-colors hover:bg-panel-soft/60",
+        justReady && "track-ready-pop",
+      )}
       data-testid="track-card"
     >
       <div className="flex items-center gap-4">
@@ -293,6 +310,31 @@ function TrackCard({
       />
     </div>
   );
+}
+
+/*
+ * The emotional peak of the product: when polling flips a track from
+ * "generating" to "preview_ready", flash a short ember glow-pop on the card.
+ */
+function useJustBecameReady(status: FeedTrackStatus): boolean {
+  const previousStatus = useRef(status);
+  const [justReady, setJustReady] = useState(false);
+
+  useEffect(() => {
+    const previous = previousStatus.current;
+
+    previousStatus.current = status;
+
+    if (previous === "generating" && status === "preview_ready") {
+      setJustReady(true);
+
+      const timeout = window.setTimeout(() => setJustReady(false), 800);
+
+      return () => window.clearTimeout(timeout);
+    }
+  }, [status]);
+
+  return justReady;
 }
 
 function PrimaryTrackAction({

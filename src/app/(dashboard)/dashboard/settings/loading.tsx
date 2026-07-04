@@ -10,7 +10,6 @@ export default function SettingsLoading() {
       <DashboardTopBar />
       <div className="mx-auto grid max-w-[1536px] gap-5 px-4 py-4 lg:px-9">
         <div className="grid gap-3">
-          <p className="text-sm text-muted-foreground">Loading your studio…</p>
           <Skeleton className="h-9 w-64" />
           <Skeleton className="h-5 w-full max-w-2xl" />
         </div>

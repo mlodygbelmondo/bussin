@@ -32,10 +32,10 @@ export function RouteStub({ title, description, children }: RouteStubProps) {
                 {description}
               </CardDescription>
             </div>
-            <div className="relative h-28 overflow-hidden rounded-lg border border-violet-200/10 bg-slate-950/50">
+            <div className="relative h-28 overflow-hidden rounded-lg border border-line bg-panel-soft">
               <div className="bussin-waveform absolute inset-x-4 top-6 h-16 opacity-80" />
               <div className="absolute right-4 bottom-4 flex items-center gap-2 text-xs text-muted-foreground">
-                <AudioLines className="size-4 text-violet-200" />
+                <AudioLines className="size-4 text-primary" />
                 Awaiting module data
               </div>
             </div>
