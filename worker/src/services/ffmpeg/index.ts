@@ -13,20 +13,31 @@ export type FfmpegService = {
   }): Promise<{ video: Uint8Array }>;
 };
 
-export function createFfmpegService(): FfmpegService {
+export type FfmpegProcessAdapter = {
+  run(args: string[]): Promise<{ exitCode: number | null }>;
+  readOutput(outputPath: string): Promise<Uint8Array>;
+};
+
+export function createFfmpegService(
+  input: {
+    adapter?: FfmpegProcessAdapter;
+  } = {},
+): FfmpegService {
+  const adapter = input.adapter ?? createFfmpegProcessAdapter();
+
   return {
-    async renderVideo(input) {
-      const outputPath = join(tmpdir(), `${input.videoRenderId}.mp4`);
+    async renderVideo(request) {
+      const outputPath = join(tmpdir(), `${request.videoRenderId}.mp4`);
       // Without a cover image, render onto a flat dark canvas (lavfi color
       // source) — there is no bundled default-cover asset to fall back to.
-      const imageInputArgs = input.imageInput
-        ? ["-loop", "1", "-i", input.imageInput]
+      const imageInputArgs = request.imageInput
+        ? ["-loop", "1", "-i", request.imageInput]
         : ["-f", "lavfi", "-i", "color=c=0x121217:s=1920x1080:r=25"];
       const args = [
         "-y",
         ...imageInputArgs,
         "-i",
-        input.audioInput,
+        request.audioInput,
         "-c:v",
         "libx264",
         "-tune",
@@ -41,25 +52,29 @@ export function createFfmpegService(): FfmpegService {
         outputPath,
       ];
 
-      await runFfmpeg(args);
+      const { exitCode } = await adapter.run(args);
 
-      return { video: await readFile(outputPath) };
+      if (exitCode !== 0) {
+        throw new Error(`ffmpeg exited with code ${exitCode ?? "unknown"}.`);
+      }
+
+      return { video: await adapter.readOutput(outputPath) };
     },
   };
 }
 
-function runFfmpeg(args: string[]) {
-  return new Promise<void>((resolve, reject) => {
-    const process = spawn("ffmpeg", args, { stdio: "ignore" });
+function createFfmpegProcessAdapter(): FfmpegProcessAdapter {
+  return {
+    readOutput: (outputPath) => readFile(outputPath),
+    run(args) {
+      return new Promise((resolve, reject) => {
+        const process = spawn("ffmpeg", args, { stdio: "ignore" });
 
-    process.on("error", reject);
-    process.on("exit", (code) => {
-      if (code === 0) {
-        resolve();
-        return;
-      }
-
-      reject(new Error(`ffmpeg exited with code ${code ?? "unknown"}.`));
-    });
-  });
+        process.on("error", reject);
+        process.on("exit", (code) => {
+          resolve({ exitCode: code });
+        });
+      });
+    },
+  };
 }
