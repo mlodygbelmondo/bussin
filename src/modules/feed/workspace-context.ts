@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 
 /**
  * Resolves the authenticated user and their workspace for server actions.
@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
  * has no workspace yet — callers can assume both exist after awaiting.
  */
 export async function requireWorkspace() {
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
