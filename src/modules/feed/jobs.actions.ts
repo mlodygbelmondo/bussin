@@ -5,6 +5,11 @@ import { z } from "zod";
 import type { Database } from "@/lib/database.types";
 import { runFeedAction } from "@/modules/feed/feed-action";
 import type { FeedActionResult } from "@/modules/feed/feed.types";
+import { InvalidStatusTransitionError } from "@/server/services/status-transition.service";
+import {
+  createStatusWriter,
+  type StatusWriter,
+} from "@/server/services/status-writer.service";
 import { enqueueWorkerQueueJob } from "@/server/services/worker-queue.service";
 
 const TARGETS = [
@@ -79,59 +84,47 @@ export async function cancelQueueRequest(
       }
 
       const trackIds = (tracks ?? []).map((track) => track.id);
-      const { error } = await supabase
-        .from("generation_requests")
-        .update({ status: "cancelled" })
-        .eq("id", id)
-        .eq("workspace_id", workspaceId)
-        .in("status", ["queued", "running"]);
+      const statusWriter = createStatusWriter(supabase);
+      const cancelReason = "Generation request cancelled.";
 
-      if (error) {
-        return { message: error.message, ok: false };
-      }
-
-      if (trackIds.length > 0) {
-        const { error: trackError } = await supabase
-          .from("tracks")
-          .update({
-            failure_reason: "Generation request cancelled.",
-            status: "failed",
-          })
-          .eq("workspace_id", workspaceId)
-          .in("id", trackIds)
-          .in("status", ["draft", "generating", "polling"]);
-
-        if (trackError) {
-          return { message: trackError.message, ok: false };
+      try {
+        await statusWriter.updateGenerationRequestStatus({
+          generationRequestId: id,
+          status: "cancelled",
+          workspaceId,
+        });
+        await statusWriter.transitionTracks({
+          failureReason: cancelReason,
+          from: ["draft", "generating", "polling"],
+          status: "failed",
+          trackIds,
+          workspaceId,
+        });
+        await statusWriter.transitionRendersForTracks({
+          failureReason: cancelReason,
+          from: ["queued", "running"],
+          status: "failed",
+          trackIds,
+          workspaceId,
+        });
+        // An upload that is already "uploading" cannot be stopped anymore;
+        // only uploads that have not started get cancelled.
+        await statusWriter.transitionUploadsForTracks({
+          failureReason: cancelReason,
+          from: ["draft", "scheduled"],
+          status: "cancelled",
+          trackIds,
+          workspaceId,
+        });
+      } catch (error) {
+        if (error instanceof InvalidStatusTransitionError) {
+          return {
+            message: "This request can no longer be cancelled.",
+            ok: false,
+          };
         }
 
-        const { error: renderError } = await supabase
-          .from("video_renders")
-          .update({
-            failure_reason: "Generation request cancelled.",
-            status: "failed",
-          })
-          .eq("workspace_id", workspaceId)
-          .in("track_id", trackIds)
-          .in("status", ["queued", "running"]);
-
-        if (renderError) {
-          return { message: renderError.message, ok: false };
-        }
-
-        const { error: uploadError } = await supabase
-          .from("youtube_uploads")
-          .update({
-            failure_reason: "Generation request cancelled.",
-            status: "cancelled",
-          })
-          .eq("workspace_id", workspaceId)
-          .in("track_id", trackIds)
-          .in("status", ["draft", "scheduled", "uploading"]);
-
-        if (uploadError) {
-          return { message: uploadError.message, ok: false };
-        }
+        throw error;
       }
 
       await supabase.from("audit_logs").insert({
@@ -186,25 +179,32 @@ async function retryGenerationRequest(input: {
     throw new Error("No tracks found for this generation request.");
   }
 
-  await updateOrThrow(
-    input.supabase
-      .from("generation_requests")
-      .update({ failure_reason: null, status: "queued" })
-      .eq("id", input.target.id)
-      .eq("workspace_id", input.workspaceId),
-  );
+  const statusWriter = createStatusWriter(input.supabase);
+  // Only failed tracks are reset; siblings that already produced audio keep
+  // their progress.
+  const resetTrackIds = await statusWriter.transitionTracks({
+    failureReason: null,
+    from: ["failed"],
+    status: "draft",
+    trackIds: tracks.map((track) => track.id),
+    workspaceId: input.workspaceId,
+  });
 
-  for (const track of tracks) {
-    await updateOrThrow(
-      input.supabase
-        .from("tracks")
-        .update({ failure_reason: null, status: "draft" })
-        .eq("id", track.id)
-        .eq("workspace_id", input.workspaceId),
-    );
+  if (!resetTrackIds.length) {
+    throw new Error("No failed tracks to retry for this request.");
+  }
+
+  await statusWriter.updateGenerationRequestStatus({
+    failureReason: null,
+    generationRequestId: input.target.id,
+    status: "queued",
+    workspaceId: input.workspaceId,
+  });
+
+  for (const trackId of resetTrackIds) {
     await enqueueWorkerJob(input.supabase, "generation-jobs", {
       generationRequestId: input.target.id,
-      trackId: track.id,
+      trackId,
       workspaceId: input.workspaceId,
     });
   }
@@ -230,20 +230,20 @@ async function retryTrack(input: {
     throw new Error("Track is missing a generation request.");
   }
 
-  await updateOrThrow(
-    input.supabase
-      .from("generation_requests")
-      .update({ failure_reason: null, status: "queued" })
-      .eq("id", track.generation_request_id)
-      .eq("workspace_id", input.workspaceId),
-  );
-  await updateOrThrow(
-    input.supabase
-      .from("tracks")
-      .update({ failure_reason: null, status: "draft" })
-      .eq("id", input.target.id)
-      .eq("workspace_id", input.workspaceId),
-  );
+  const statusWriter = createStatusWriter(input.supabase);
+
+  await statusWriter.updateTrackStatus({
+    failureReason: null,
+    status: "draft",
+    trackId: input.target.id,
+    workspaceId: input.workspaceId,
+  });
+  await statusWriter.updateGenerationRequestStatus({
+    failureReason: null,
+    generationRequestId: track.generation_request_id,
+    status: "queued",
+    workspaceId: input.workspaceId,
+  });
   await enqueueWorkerJob(input.supabase, "generation-jobs", {
     generationRequestId: track.generation_request_id,
     trackId: input.target.id,
@@ -271,13 +271,23 @@ async function retryRender(input: {
     throw new Error("Render is missing a track.");
   }
 
-  await updateOrThrow(
-    input.supabase
-      .from("video_renders")
-      .update({ failure_reason: null, status: "queued" })
-      .eq("id", input.target.id)
-      .eq("workspace_id", input.workspaceId),
-  );
+  const statusWriter = createStatusWriter(input.supabase);
+
+  await statusWriter.updateVideoRenderStatus({
+    failureReason: null,
+    status: "queued",
+    videoRenderId: input.target.id,
+    workspaceId: input.workspaceId,
+  });
+  // The failed render also marked the track failed; put it back to approved
+  // so the render job can move it approved -> rendering again.
+  await statusWriter.transitionTracks({
+    failureReason: null,
+    from: ["failed"],
+    status: "approved",
+    trackIds: [render.track_id],
+    workspaceId: input.workspaceId,
+  });
   await enqueueWorkerJob(input.supabase, "render-jobs", {
     trackId: render.track_id,
     videoRenderId: input.target.id,
@@ -305,13 +315,14 @@ async function retryUpload(input: {
     throw new Error("Upload is missing track or render details.");
   }
 
-  await updateOrThrow(
-    input.supabase
-      .from("youtube_uploads")
-      .update({ failure_reason: null, status: "draft" })
-      .eq("id", input.target.id)
-      .eq("workspace_id", input.workspaceId),
-  );
+  const statusWriter: StatusWriter = createStatusWriter(input.supabase);
+
+  await statusWriter.updateYoutubeUploadStatus({
+    failureReason: null,
+    status: "draft",
+    workspaceId: input.workspaceId,
+    youtubeUploadId: input.target.id,
+  });
   await enqueueWorkerJob(input.supabase, "youtube-upload-jobs", {
     trackId: upload.track_id,
     videoRenderId: upload.video_render_id,
@@ -326,14 +337,4 @@ async function enqueueWorkerJob(
   message: Record<string, string>,
 ) {
   await enqueueWorkerQueueJob({ message, queueName });
-}
-
-async function updateOrThrow(
-  request: PromiseLike<{ error: { message: string } | null }>,
-) {
-  const { error } = await request;
-
-  if (error) {
-    throw new Error(error.message);
-  }
 }

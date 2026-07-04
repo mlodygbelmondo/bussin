@@ -14,36 +14,46 @@ const TRANSITIONS = {
     queued: ["running", "cancelled"],
     running: ["completed", "failed", "cancelled"],
     completed: [],
-    failed: [],
+    // Retry re-enqueues a failed request.
+    failed: ["queued"],
     cancelled: [],
   },
   tracks: {
-    draft: ["generating", "rejected"],
+    // "failed": a queued generation job can die before the worker marks the
+    // track generating.
+    draft: ["generating", "rejected", "failed"],
     generating: ["polling", "preview_ready", "ready", "failed"],
     polling: ["preview_ready", "ready", "failed"],
     preview_ready: ["approved", "rejected", "failed"],
     ready: ["approved", "rejected", "failed"],
-    approved: ["rendering", "rejected"],
+    // "failed": a queued render job can die before the worker marks the
+    // track rendering.
+    approved: ["rendering", "rejected", "failed"],
     rendering: ["rendered", "failed"],
     rendered: ["uploaded", "failed"],
     uploaded: [],
     rejected: [],
-    failed: [],
+    // Retry resets: "draft" re-runs generation, "approved" re-runs the render.
+    failed: ["draft", "approved"],
   },
   video_renders: {
-    queued: ["running", "cancelled"],
+    // "failed": a queued render job can die before the worker marks it running.
+    queued: ["running", "cancelled", "failed"],
     running: ["rendered", "completed", "failed", "cancelled"],
     rendered: [],
     completed: [],
-    failed: [],
+    // Retry re-queues a failed render.
+    failed: ["queued"],
     cancelled: [],
   },
   youtube_uploads: {
-    draft: ["scheduled", "uploading", "cancelled"],
-    scheduled: ["uploading", "cancelled"],
+    // "failed": a queued upload job can die before the worker marks it uploading.
+    draft: ["scheduled", "uploading", "cancelled", "failed"],
+    scheduled: ["uploading", "cancelled", "failed"],
     uploading: ["uploaded", "failed"],
     uploaded: [],
-    failed: [],
+    // Retry: "draft" re-queues publish-now, "scheduled" reschedules.
+    failed: ["draft", "scheduled"],
     cancelled: [],
   },
 } as const;

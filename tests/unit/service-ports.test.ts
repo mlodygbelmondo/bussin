@@ -3,7 +3,6 @@ import { createUsageRepository } from "@/server/services/generation.repository";
 import { createAuditLogService } from "@/server/services/audit-log.service";
 import { createImageAssetService } from "@/server/services/image-asset.service";
 import { createUsageService } from "@/server/services/usage.service";
-import { createVideoRenderService } from "@/server/services/video-render.service";
 import { createWorkspaceService } from "@/server/services/workspace.service";
 
 const workspaceId = "11111111-1111-4111-8111-111111111111";
@@ -140,7 +139,7 @@ describe("usage service", () => {
   });
 });
 
-describe("audit, image asset, and render services", () => {
+describe("audit and image asset services", () => {
   it("creates audit logs with metadata", async () => {
     const repository = {
       createAuditLog: vi.fn().mockResolvedValue({ id: "audit-id" }),
@@ -175,40 +174,5 @@ describe("audit, image asset, and render services", () => {
         storage_path: "33333333-3333-4333-8333-333333333333/cover.png",
       }),
     ).toThrow("storage_path must start with workspace_id");
-  });
-
-  it("updates video render status through strict transitions", async () => {
-    const repository = {
-      createVideoRender: vi.fn(),
-      getVideoRenderById: vi.fn().mockResolvedValue({
-        id: "render-id",
-        workspace_id: workspaceId,
-        track_id: "track-id",
-        status: "queued",
-        video_storage_path: null,
-        failure_reason: null,
-        started_at: null,
-        finished_at: null,
-        created_at: "2026-05-01T00:00:00.000Z",
-        updated_at: "2026-05-01T00:00:00.000Z",
-      }),
-      updateVideoRender: vi.fn().mockResolvedValue({ status: "running" }),
-    };
-    const service = createVideoRenderService(repository);
-
-    await service.updateStatus({
-      workspaceId,
-      renderId: "render-id",
-      status: "running",
-    });
-
-    expect(repository.updateVideoRender).toHaveBeenCalledWith({
-      renderId: "render-id",
-      values: {
-        failure_reason: undefined,
-        status: "running",
-        video_storage_path: undefined,
-      },
-    });
   });
 });

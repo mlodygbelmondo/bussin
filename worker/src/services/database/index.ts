@@ -10,6 +10,7 @@ import type {
   VideoRenderStatus,
   YoutubeUploadStatus,
 } from "../../../../src/server/services/status-transition.service";
+import { createStatusWriter } from "../../../../src/server/services/status-writer.service";
 
 export type GenerationContext = {
   finalPrompt: string;
@@ -143,6 +144,9 @@ export function createWorkerDatabaseService(
   supabase: SupabaseClient<Database>,
 ): WorkerDatabaseService {
   const client = supabase;
+  // All status columns are written through the guarded status writer so the
+  // worker cannot perform a transition outside the status vocabulary.
+  const statusWriter = createStatusWriter(supabase);
 
   return {
     async createAuditLog(input) {
@@ -484,47 +488,13 @@ export function createWorkerDatabaseService(
       );
     },
     async updateTrackStatus(input) {
-      await throwOnError(
-        client
-          .from("tracks")
-          .update({
-            failure_reason: input.failureReason,
-            status: input.status,
-          })
-          .eq("workspace_id", input.workspaceId)
-          .eq("id", input.trackId),
-      );
+      await statusWriter.updateTrackStatus(input);
     },
     async updateVideoRenderStatus(input) {
-      await throwOnError(
-        client
-          .from("video_renders")
-          .update({
-            failure_reason: input.failureReason,
-            finished_at: ["failed", "rendered", "completed"].includes(
-              input.status,
-            )
-              ? new Date().toISOString()
-              : undefined,
-            started_at:
-              input.status === "running" ? new Date().toISOString() : undefined,
-            status: input.status,
-          })
-          .eq("workspace_id", input.workspaceId)
-          .eq("id", input.videoRenderId),
-      );
+      await statusWriter.updateVideoRenderStatus(input);
     },
     async updateYoutubeUploadStatus(input) {
-      await throwOnError(
-        client
-          .from("youtube_uploads")
-          .update({
-            failure_reason: input.failureReason,
-            status: input.status,
-          })
-          .eq("workspace_id", input.workspaceId)
-          .eq("id", input.youtubeUploadId),
-      );
+      await statusWriter.updateYoutubeUploadStatus(input);
     },
   };
 }
