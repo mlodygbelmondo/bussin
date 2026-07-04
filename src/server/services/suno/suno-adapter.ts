@@ -145,9 +145,18 @@ function parseTrackStatus(
   const status = body.data?.status;
   const failureReason =
     body.data?.errorMessage ?? body.data?.errorCode ?? body.msg ?? null;
+  const trackBody = body.data?.response?.sunoData?.[0];
+  const audioUrl = trackBody?.audioUrl ?? trackBody?.audio_url;
+
+  // CALLBACK_EXCEPTION means Suno could not deliver its callback, not that
+  // generation failed — we poll for results, so if the audio is there the
+  // track is done.
+  const readyDespiteCallbackFailure =
+    status === "CALLBACK_EXCEPTION" && Boolean(audioUrl);
 
   if (
     status &&
+    !readyDespiteCallbackFailure &&
     [
       "CREATE_TASK_FAILED",
       "GENERATE_AUDIO_FAILED",
@@ -161,12 +170,9 @@ function parseTrackStatus(
     };
   }
 
-  if (status !== "SUCCESS") {
+  if (status !== "SUCCESS" && !readyDespiteCallbackFailure) {
     return { raw: body, status: "processing" };
   }
-
-  const trackBody = body.data?.response?.sunoData?.[0];
-  const audioUrl = trackBody?.audioUrl ?? trackBody?.audio_url;
 
   if (!audioUrl) {
     throw new SunoIntegrationError(

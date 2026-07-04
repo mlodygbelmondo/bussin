@@ -22,9 +22,9 @@ export function PulseMark({ className }: { className?: string }) {
           y1="44"
           y2="4"
         >
-          <stop offset="0" stopColor="#e5306f" />
-          <stop offset="0.55" stopColor="#f5484e" />
-          <stop offset="1" stopColor="#ff8a3d" />
+          <stop offset="0" stopColor="#a61b86" />
+          <stop offset="0.55" stopColor="#f04796" />
+          <stop offset="1" stopColor="#fe838f" />
         </linearGradient>
       </defs>
       <rect

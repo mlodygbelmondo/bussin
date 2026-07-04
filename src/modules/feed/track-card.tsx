@@ -12,7 +12,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { Reveal } from "@/components/common/motion";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -33,7 +34,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { updateTrackDetailsAction } from "@/modules/feed/feed.actions";
-import type { FeedTrack, FeedTrackStatus } from "@/modules/feed/feed.types";
+import {
+  cancelScheduleOptimism,
+  discardTrackOptimism,
+  editTrackDetailsOptimism,
+  publishScheduledEarlyOptimism,
+  publishTrackOptimism,
+  retryTrackOptimism,
+  scheduleTrackOptimism,
+} from "@/modules/feed/feed-optimism";
+import type { FeedTrack } from "@/modules/feed/feed.types";
 import { formatDuration, toDatetimeLocalValue } from "@/modules/feed/format";
 import { retryFailedQueueItem } from "@/modules/feed/jobs.actions";
 import {
@@ -45,10 +55,15 @@ import {
   cancelScheduledUploadAction,
   publishScheduledUploadNowAction,
 } from "@/modules/feed/schedule.actions";
+import { useStatusMomentClass } from "@/modules/feed/status-moments";
 import { TrackStatusBadge } from "@/modules/feed/status-presentation";
+import {
+  ComposingEqualizer,
+  PlaybackWaveform,
+  useAudioPreview,
+  useWaveformPeaks,
+} from "@/modules/feed/track-waveform";
 import { useFeedAction } from "@/modules/feed/use-feed-action";
-
-let activeAudio: HTMLAudioElement | null = null;
 
 export function TrackCard({
   channelTitle,
@@ -60,18 +75,24 @@ export function TrackCard({
   const { pending, run } = useFeedAction();
   const [editing, setEditing] = useState(false);
   const [scheduling, setScheduling] = useState(false);
-  const justReady = useJustBecameReady(track.status);
+  const preview = useAudioPreview(track.audioUrl);
+  const peaks = useWaveformPeaks(preview.src);
+  const momentClass = useStatusMomentClass(track.status);
 
   return (
     <div
       className={cn(
         "px-5 py-3.5 transition-colors hover:bg-panel-soft/60",
-        justReady && "track-ready-pop",
+        momentClass,
       )}
       data-testid="track-card"
     >
       <div className="flex items-center gap-4">
-        <CoverThumb coverUrl={track.coverUrl} title={track.title} />
+        <CoverThumb
+          composing={track.status === "generating"}
+          coverUrl={track.coverUrl}
+          title={track.title}
+        />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="truncate text-sm font-medium">{track.title}</p>
@@ -91,7 +112,12 @@ export function TrackCard({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {track.audioUrl ? <AudioPlayButton src={track.audioUrl} /> : null}
+          {track.audioUrl || preview.active ? (
+            <AudioPlayButton
+              onToggle={preview.toggle}
+              playing={preview.playing}
+            />
+          ) : null}
           <PrimaryTrackAction pending={pending} run={run} track={track} />
           <TrackMoreMenu
             pending={pending}
@@ -102,6 +128,12 @@ export function TrackCard({
           />
         </div>
       </div>
+
+      {preview.active ? (
+        <Reveal className="mt-3">
+          <PlaybackWaveform peaks={peaks} progress={preview.progress} />
+        </Reveal>
+      ) : null}
 
       {track.status === "failed" ? (
         <div
@@ -133,31 +165,6 @@ export function TrackCard({
   );
 }
 
-/*
- * The emotional peak of the product: when polling flips a track from
- * "generating" to "preview_ready", flash a short ember glow-pop on the card.
- */
-function useJustBecameReady(status: FeedTrackStatus): boolean {
-  const previousStatus = useRef(status);
-  const [justReady, setJustReady] = useState(false);
-
-  useEffect(() => {
-    const previous = previousStatus.current;
-
-    previousStatus.current = status;
-
-    if (previous === "generating" && status === "preview_ready") {
-      setJustReady(true);
-
-      const timeout = window.setTimeout(() => setJustReady(false), 800);
-
-      return () => window.clearTimeout(timeout);
-    }
-  }, [status]);
-
-  return justReady;
-}
-
 function PrimaryTrackAction({
   pending,
   run,
@@ -172,7 +179,13 @@ function PrimaryTrackAction({
       <Button
         data-testid="publish-now"
         disabled={pending}
-        onClick={() => run(publishTrackNowAction, { trackId: track.id })}
+        onClick={() =>
+          run(
+            publishTrackNowAction,
+            { trackId: track.id },
+            { optimistic: publishTrackOptimism(track.id) },
+          )
+        }
         size="sm"
       >
         Publish
@@ -185,12 +198,19 @@ function PrimaryTrackAction({
       <Button
         data-testid="track-retry"
         disabled={pending}
-        onClick={() =>
-          run(retryFailedQueueItem, {
-            id: track.retryTarget?.id ?? "",
-            type: track.retryTarget?.type ?? "track",
-          })
-        }
+        onClick={() => {
+          const target = track.retryTarget;
+
+          if (!target) {
+            return;
+          }
+
+          run(
+            retryFailedQueueItem,
+            { id: target.id, type: target.type },
+            { optimistic: retryTrackOptimism(track.id, target.type) },
+          );
+        }}
         size="sm"
         variant="outline"
       >
@@ -271,7 +291,13 @@ function TrackMoreMenu({
             </DropdownMenuItem>
             <DropdownMenuItem
               data-testid="discard-track"
-              onSelect={() => run(rejectTrackAction, { trackId: track.id })}
+              onSelect={() =>
+                run(
+                  rejectTrackAction,
+                  { trackId: track.id },
+                  { optimistic: discardTrackOptimism(track.id) },
+                )
+              }
             >
               <Trash2 className="size-4" />
               Discard
@@ -283,9 +309,11 @@ function TrackMoreMenu({
             <DropdownMenuItem
               data-testid="publish-early"
               onSelect={() =>
-                run(publishScheduledUploadNowAction, {
-                  uploadId: track.uploadId ?? "",
-                })
+                run(
+                  publishScheduledUploadNowAction,
+                  { uploadId: track.uploadId ?? "" },
+                  { optimistic: publishScheduledEarlyOptimism(track.id) },
+                )
               }
             >
               <ExternalLink className="size-4" />
@@ -294,9 +322,11 @@ function TrackMoreMenu({
             <DropdownMenuItem
               data-testid="cancel-schedule"
               onSelect={() =>
-                run(cancelScheduledUploadAction, {
-                  uploadId: track.uploadId ?? "",
-                })
+                run(
+                  cancelScheduledUploadAction,
+                  { uploadId: track.uploadId ?? "" },
+                  { optimistic: cancelScheduleOptimism(track.id) },
+                )
               }
             >
               <X className="size-4" />
@@ -352,18 +382,21 @@ function EditDetailsForm({
         <Button
           data-testid="save-details"
           disabled={pending || title.trim().length === 0}
-          onClick={() =>
+          onClick={() => {
             run(
               updateTrackDetailsAction,
+              { description, tags, title, trackId: track.id },
               {
-                description,
-                tags,
-                title,
-                trackId: track.id,
+                optimistic: editTrackDetailsOptimism(track.id, {
+                  description,
+                  tags,
+                  title,
+                }),
               },
-              onDone,
-            )
-          }
+            );
+            // Optimistic-first: the card already shows the new details.
+            onDone();
+          }}
           size="sm"
         >
           Save
@@ -424,14 +457,15 @@ function ScheduleDialog({
                 return;
               }
 
+              const scheduledIso = scheduledDate.toISOString();
+
               run(
                 scheduleTrackAction,
-                {
-                  scheduled_at: scheduledDate.toISOString(),
-                  trackId,
-                },
-                () => onOpenChange(false),
+                { scheduled_at: scheduledIso, trackId },
+                { optimistic: scheduleTrackOptimism(trackId, scheduledIso) },
               );
+              // Optimistic-first: the card already shows the schedule.
+              onOpenChange(false);
             }}
           >
             <CalendarClock className="size-4" />
@@ -443,38 +477,22 @@ function ScheduleDialog({
   );
 }
 
-function AudioPlayButton({ src }: { src: string }) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [playing, setPlaying] = useState(false);
-
-  function toggle() {
-    if (!audioRef.current) {
-      audioRef.current = new Audio(src);
-      audioRef.current.addEventListener("ended", () => setPlaying(false));
-      audioRef.current.addEventListener("pause", () => setPlaying(false));
-    }
-
-    if (playing) {
-      audioRef.current.pause();
-
-      return;
-    }
-
-    if (activeAudio && activeAudio !== audioRef.current) {
-      activeAudio.pause();
-    }
-
-    activeAudio = audioRef.current;
-    void audioRef.current.play();
-    setPlaying(true);
-  }
-
+function AudioPlayButton({
+  onToggle,
+  playing,
+}: {
+  onToggle: () => void;
+  playing: boolean;
+}) {
   return (
     <Button
       aria-label={playing ? "Pause preview" : "Play preview"}
-      className="flex size-9 items-center justify-center rounded-full bg-primary/15 text-primary transition-colors hover:bg-primary/25"
+      className={cn(
+        "flex size-9 items-center justify-center rounded-full bg-primary/15 text-primary transition-colors hover:bg-primary/25",
+        playing && "bg-primary/25",
+      )}
       data-testid="play-track"
-      onClick={toggle}
+      onClick={onToggle}
       size="icon"
       variant="ghost"
     >
@@ -484,9 +502,11 @@ function AudioPlayButton({ src }: { src: string }) {
 }
 
 function CoverThumb({
+  composing,
   coverUrl,
   title,
 }: {
+  composing: boolean;
   coverUrl: string | null;
   title: string;
 }) {
@@ -503,7 +523,7 @@ function CoverThumb({
 
   return (
     <span className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-muted-foreground">
-      <Music2 className="size-4" />
+      {composing ? <ComposingEqualizer /> : <Music2 className="size-4" />}
     </span>
   );
 }

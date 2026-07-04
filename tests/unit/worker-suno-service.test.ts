@@ -42,6 +42,7 @@ describe("worker Suno service credential resolution", () => {
     const service = createSunoService({
       adapterFactory,
       database,
+      callbackUrl: "https://app.example.test/api/suno/callback",
       fallbackApiBaseUrl: "https://fallback.sunoapi.org",
       fallbackApiKey: "fallback-key",
       secrets,
@@ -71,6 +72,7 @@ describe("worker Suno service credential resolution", () => {
     const service = createSunoService({
       adapterFactory,
       database,
+      callbackUrl: "https://app.example.test/api/suno/callback",
       fallbackApiBaseUrl: "https://fallback.sunoapi.org",
       fallbackApiKey: "fallback-key",
       secrets,
@@ -95,6 +97,7 @@ describe("worker Suno service credential resolution", () => {
         getSunoConnection: vi.fn().mockResolvedValue(null),
         markSunoConnectionError: vi.fn(),
       },
+      callbackUrl: "https://app.example.test/api/suno/callback",
       fallbackApiBaseUrl: "https://fallback.sunoapi.org",
       secrets,
     });
@@ -124,6 +127,7 @@ describe("worker Suno service credential resolution", () => {
     const service = createSunoService({
       adapterFactory: () => adapter,
       database,
+      callbackUrl: "https://app.example.test/api/suno/callback",
       fallbackApiBaseUrl: "https://fallback.sunoapi.org",
       secrets,
     });
@@ -154,6 +158,7 @@ describe("worker Suno service credential resolution", () => {
         }),
         markSunoConnectionError: vi.fn(),
       },
+      callbackUrl: "https://app.example.test/api/suno/callback",
       fallbackApiBaseUrl: "https://fallback.sunoapi.org",
       secrets,
     });

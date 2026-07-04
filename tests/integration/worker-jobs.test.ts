@@ -1,8 +1,13 @@
 // @vitest-environment node
 
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { pollSunoJob } from "../../worker/src/jobs/poll-suno";
 import { processGenerationJob } from "../../worker/src/jobs/process-generation";
+import { renderVideoJob } from "../../worker/src/jobs/render-video";
 import { uploadYoutubeJob } from "../../worker/src/jobs/upload-youtube";
 import {
   ackMessage,
@@ -162,6 +167,8 @@ describe("worker job processors", () => {
       copyAudioFromUrl: vi
         .fn()
         .mockResolvedValue(`${workspaceId}/audio/${trackId}.mp3`),
+      downloadAudio: vi.fn(),
+      downloadImage: vi.fn(),
       downloadVideo: vi.fn(),
       removeTempObjects: vi.fn(),
       uploadVideo: vi.fn(),
@@ -210,6 +217,95 @@ describe("worker job processors", () => {
   });
 });
 
+describe("render video worker", () => {
+  it("stages storage assets as local temp files for ffmpeg and cleans them up", async () => {
+    const audio = new Uint8Array([1, 2, 3]);
+    const image = new Uint8Array([4, 5, 6]);
+    const database = makeDatabaseService({
+      getRenderContext: vi.fn().mockResolvedValue({
+        audioStoragePath: `${workspaceId}/audio/${trackId}.mp3`,
+        imageStoragePath: `${workspaceId}/images/cover.png`,
+        publishNow: false,
+        youtubeUploadId: null,
+      }),
+    });
+    const storage: WorkerStorageService = {
+      copyAudioFromUrl: vi.fn(),
+      downloadAudio: vi.fn().mockResolvedValue(audio),
+      downloadImage: vi.fn().mockResolvedValue(image),
+      downloadVideo: vi.fn(),
+      removeTempObjects: vi.fn(),
+      uploadVideo: vi
+        .fn()
+        .mockResolvedValue(`${workspaceId}/renders/${renderId}.mp4`),
+    };
+    const expectedAudioInput = join(tmpdir(), `render-${renderId}-audio.mp3`);
+    const expectedImageInput = join(tmpdir(), `render-${renderId}-cover.png`);
+    const ffmpeg = {
+      renderVideo: vi.fn(async (input: { audioInput: string }) => ({
+        video: await readFile(input.audioInput),
+      })),
+    };
+
+    await renderVideoJob(
+      { workspaceId, trackId, videoRenderId: renderId },
+      { database, ffmpeg, queue: createInMemoryQueueClient(), storage },
+    );
+
+    expect(storage.downloadAudio).toHaveBeenCalledWith(
+      `${workspaceId}/audio/${trackId}.mp3`,
+    );
+    expect(storage.downloadImage).toHaveBeenCalledWith(
+      `${workspaceId}/images/cover.png`,
+    );
+    expect(ffmpeg.renderVideo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        audioInput: expectedAudioInput,
+        imageInput: expectedImageInput,
+      }),
+    );
+    expect(storage.uploadVideo).toHaveBeenCalledWith(
+      expect.objectContaining({ video: Buffer.from(audio) }),
+    );
+    expect(existsSync(expectedAudioInput)).toBe(false);
+    expect(existsSync(expectedImageInput)).toBe(false);
+  });
+
+  it("cleans up temp files when the render fails", async () => {
+    const database = makeDatabaseService({
+      getRenderContext: vi.fn().mockResolvedValue({
+        audioStoragePath: `${workspaceId}/audio/${trackId}.mp3`,
+        imageStoragePath: null,
+        publishNow: false,
+        youtubeUploadId: null,
+      }),
+    });
+    const storage: WorkerStorageService = {
+      copyAudioFromUrl: vi.fn(),
+      downloadAudio: vi.fn().mockResolvedValue(new Uint8Array([1])),
+      downloadImage: vi.fn(),
+      downloadVideo: vi.fn(),
+      removeTempObjects: vi.fn(),
+      uploadVideo: vi.fn(),
+    };
+    const ffmpeg = {
+      renderVideo: vi.fn().mockRejectedValue(new Error("ffmpeg exploded")),
+    };
+
+    await expect(
+      renderVideoJob(
+        { workspaceId, trackId, videoRenderId: renderId },
+        { database, ffmpeg, queue: createInMemoryQueueClient(), storage },
+      ),
+    ).rejects.toThrow("ffmpeg exploded");
+
+    expect(existsSync(join(tmpdir(), `render-${renderId}-audio.mp3`))).toBe(
+      false,
+    );
+    expect(storage.uploadVideo).not.toHaveBeenCalled();
+  });
+});
+
 describe("YouTube upload worker", () => {
   it("downloads the rendered video and uploads it with channel credentials", async () => {
     const video = new Uint8Array([1, 2, 3]);
@@ -228,6 +324,8 @@ describe("YouTube upload worker", () => {
     });
     const storage: WorkerStorageService = {
       copyAudioFromUrl: vi.fn(),
+      downloadAudio: vi.fn(),
+      downloadImage: vi.fn(),
       downloadVideo: vi.fn().mockResolvedValue(video),
       removeTempObjects: vi.fn(),
       uploadVideo: vi.fn(),
@@ -289,6 +387,8 @@ describe("YouTube upload worker", () => {
     });
     const storage: WorkerStorageService = {
       copyAudioFromUrl: vi.fn(),
+      downloadAudio: vi.fn(),
+      downloadImage: vi.fn(),
       downloadVideo: vi.fn().mockResolvedValue(video),
       removeTempObjects: vi.fn(),
       uploadVideo: vi.fn(),
@@ -330,6 +430,8 @@ describe("YouTube upload worker", () => {
     });
     const storage: WorkerStorageService = {
       copyAudioFromUrl: vi.fn(),
+      downloadAudio: vi.fn(),
+      downloadImage: vi.fn(),
       downloadVideo: vi.fn(),
       removeTempObjects: vi.fn(),
       uploadVideo: vi.fn(),

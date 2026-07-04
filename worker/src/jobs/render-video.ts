@@ -1,3 +1,6 @@
+import { rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { extname, join } from "node:path";
 import type { QueueClient } from "../queue/queue-client";
 import { enqueueYoutubeUploadJob } from "../queue/queue-client";
 import {
@@ -32,13 +35,50 @@ export async function renderVideoJob(
   });
 
   const context = await services.database.getRenderContext(payload);
-  const render = await services.ffmpeg.renderVideo({
-    audioInput: context.audioStoragePath,
-    imageInput: context.imageStoragePath,
-    trackId: payload.trackId,
-    videoRenderId: payload.videoRenderId,
-    workspaceId: payload.workspaceId,
-  });
+  // FFmpeg reads local files, so stage the storage objects in the temp dir
+  // for the duration of the render.
+  const audioInput = join(
+    tmpdir(),
+    `render-${payload.videoRenderId}-audio.mp3`,
+  );
+  const imageInput = context.imageStoragePath
+    ? join(
+        tmpdir(),
+        `render-${payload.videoRenderId}-cover${
+          extname(context.imageStoragePath) || ".png"
+        }`,
+      )
+    : null;
+
+  let render: Awaited<ReturnType<FfmpegService["renderVideo"]>>;
+
+  try {
+    await writeFile(
+      audioInput,
+      await services.storage.downloadAudio(context.audioStoragePath),
+    );
+
+    if (imageInput && context.imageStoragePath) {
+      await writeFile(
+        imageInput,
+        await services.storage.downloadImage(context.imageStoragePath),
+      );
+    }
+
+    render = await services.ffmpeg.renderVideo({
+      audioInput,
+      imageInput,
+      trackId: payload.trackId,
+      videoRenderId: payload.videoRenderId,
+      workspaceId: payload.workspaceId,
+    });
+  } finally {
+    await Promise.all(
+      [audioInput, imageInput]
+        .filter((path): path is string => Boolean(path))
+        .map((path) => rm(path, { force: true }).catch(() => undefined)),
+    );
+  }
   const videoStoragePath = await services.storage.uploadVideo({
     trackId: payload.trackId,
     video: render.video,

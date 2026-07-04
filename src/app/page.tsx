@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarClock, Sparkles } from "lucide-react";
+import { CalendarClock } from "lucide-react";
 import { LandingPrompt } from "@/app/landing-prompt";
 import { Aurora } from "@/components/common/aurora";
 import { PulseMark } from "@/components/common/logo";
@@ -71,11 +71,7 @@ export default function Home() {
 
         <section className="relative z-0 mx-auto max-w-3xl px-6 pt-24 pb-20 text-center">
           <Reveal>
-            <div className="inline-flex items-center gap-2 rounded-full border border-line bg-panel/60 px-3 py-1 text-xs text-muted-foreground">
-              <Sparkles className="size-3 text-primary" />
-              AI music studio for YouTube creators
-            </div>
-            <h1 className="font-display mt-6 text-5xl leading-[1.05] font-bold tracking-tight sm:text-6xl">
+            <h1 className="font-display text-5xl leading-[1.05] font-bold tracking-tight sm:text-6xl">
               Type a vibe.
               <span className="block text-primary">Publish a track.</span>
             </h1>

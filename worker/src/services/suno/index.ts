@@ -35,6 +35,7 @@ export function createSunoService(input: {
     apiUrl: string;
     credential: string;
   }) => SunoAdapter;
+  callbackUrl: string;
   database: SunoCredentialSource;
   fallbackApiBaseUrl: string;
   fallbackApiKey?: string;
@@ -123,6 +124,7 @@ export function createSunoService(input: {
 
       try {
         return await adapter.createCustomGeneration({
+          callbackUrl: input.callbackUrl,
           finalPrompt: request.prompt,
           makeInstrumental: true,
           style: "instrumental",

@@ -78,12 +78,16 @@ TRANSITIONS map.
 `src/app/globals.css`; components consume tokens only. Hard rules: ember
 (`--primary`) is the only accent; state colors (`--success`, `--warning`,
 `--danger`, `--info`) mark state, never decoration; flat surfaces with 1px
-borders; the only ambient effects are the hero backdrop trio (`<Aurora />`,
-`<Starfield />`, `.grain`) plus the logo-mark gradient — nothing else gets
-gradients, glassmorphism, glows, or textures; status display uses the
-`Badge` component variants. Motion: `motion/react` via the primitives in
-`src/components/common/motion.tsx`, enter-only reveals, transform/opacity
-only, reduced-motion respected (see the Motion section of the design doc).
+borders; status display uses the `Badge` component variants. Expressive
+visuals follow the "sound made visible" concept on two tiers: the Stage
+(home, auth) is loud — the ambient trio (`<Aurora />`, `<Starfield />`,
+`.grain`) plus waveform-derived choreography; the Studio (`/dashboard`) is
+reactive and one notch calmer — motion responds to audio or job events,
+never idles, with a budget of at most four signature moments. The only
+gradients anywhere are the aurora and the logo mark. Motion: `motion/react`
+via the primitives in `src/components/common/motion.tsx`, transform/opacity
+only, reduced-motion respected, optimistic UI on feed mutations (see the
+Motion section of the design doc).
 
 The living reference is the dev-only playground at `/design`
 (`src/app/design`) — every primitive, variant, and state on real tokens.
@@ -178,7 +182,8 @@ This is not the Next.js you know: this project uses Next.js 16 with breaking API
 
 ## UI Rules
 
-- Follow `docs/design-system.md`; tokens only, no new colors or effects.
+- Follow `docs/design-system.md`; tokens only, no new colors; expressive
+  effects only within its "sound made visible" two-tier rules.
 - New primitives follow the authoring convention in the design doc: CVA
   variants when a primitive has variants, plain token classes otherwise;
   showcase every primitive in `/design`.

@@ -183,6 +183,10 @@ export function createStatusWriter(client: Client) {
 
       if (input.status === "running") {
         values.started_at = new Date().toISOString();
+        // A retry re-enters running on a row whose previous attempt already
+        // stamped finished_at; clear it or the new started_at violates the
+        // finished-after-started check constraint.
+        values.finished_at = null;
       }
 
       if (FINISHED_RENDER_STATUSES.includes(input.status)) {

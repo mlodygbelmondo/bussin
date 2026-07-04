@@ -54,6 +54,7 @@ describe("Suno integration adapter", () => {
 
     await expect(
       adapter.createCustomGeneration({
+        callbackUrl: "https://app.example.test/api/suno/callback",
         finalPrompt: "A focused lo-fi instrumental beat",
         makeInstrumental: true,
         style: "lofi",
@@ -64,11 +65,71 @@ describe("Suno integration adapter", () => {
 
     const [, init] = fetch.mock.calls[0];
     expect(JSON.parse(String(init?.body))).toMatchObject({
+      callBackUrl: "https://app.example.test/api/suno/callback",
       customMode: true,
       instrumental: true,
       prompt: "A focused lo-fi instrumental beat",
       style: "lofi",
       title: "Focus Loop",
+    });
+  });
+
+  it("treats CALLBACK_EXCEPTION with delivered audio as ready", async () => {
+    const fetch = vi.fn().mockResolvedValue(
+      jsonResponse({
+        code: 200,
+        data: {
+          response: {
+            sunoData: [
+              {
+                audioUrl: "https://cdn.suno.example/track.mp3",
+                duration: 120,
+                id: "suno-task-1",
+                title: "Focus Loop",
+              },
+            ],
+          },
+          status: "CALLBACK_EXCEPTION",
+          taskId: "suno-task-1",
+        },
+      }),
+    );
+    const adapter = createSunoAdapter({
+      apiUrl: "https://api.suno.example",
+      credential: "test-token",
+      fetch,
+    });
+
+    await expect(
+      adapter.getTrackStatus({ sunoTrackId: "suno-task-1" }),
+    ).resolves.toMatchObject({
+      audioUrl: "https://cdn.suno.example/track.mp3",
+      status: "ready",
+    });
+  });
+
+  it("fails CALLBACK_EXCEPTION without delivered audio", async () => {
+    const fetch = vi.fn().mockResolvedValue(
+      jsonResponse({
+        code: 200,
+        data: {
+          errorMessage: "Callback failed.",
+          status: "CALLBACK_EXCEPTION",
+          taskId: "suno-task-1",
+        },
+      }),
+    );
+    const adapter = createSunoAdapter({
+      apiUrl: "https://api.suno.example",
+      credential: "test-token",
+      fetch,
+    });
+
+    await expect(
+      adapter.getTrackStatus({ sunoTrackId: "suno-task-1" }),
+    ).resolves.toMatchObject({
+      failureReason: "Callback failed.",
+      status: "failed",
     });
   });
 

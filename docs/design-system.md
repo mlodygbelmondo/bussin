@@ -26,14 +26,24 @@ primitive, variant, and state rendered on the real tokens.
    with a 1px `--line`/`--border` border. Elevation exists only for floating
    surfaces (dialogs, popovers, dropdowns) via `--shadow-elevated`, plus the
    hero prompt focus glow (`.prompt-card`).
-5. **One ambient signature.** The ember aurora (indigo → magenta → ember,
-   `--aurora-1/2/3`) is permitted only via the shared `<Aurora />` component
-   as a hero or empty-state backdrop that fades into ink — never on buttons,
-   cards, borders, or text. The hero backdrop may be completed by
-   `<Starfield />` (sparse twinkling sparks) and the `.grain` overlay —
-   these three travel together and appear only behind hero prompts. The
-   only other gradient in the product is the logo mark. No other textures,
-   grids, or particles anywhere.
+5. **Sound made visible, on two stages.** Every expressive visual derives
+   from one concept: audio made visual — waveforms, frequency bars, pulses
+   that follow what the product is actually doing. There are two
+   expressiveness tiers:
+   - **Stage** (the marketing home page and auth screens): loud. The
+     ambient trio (`<Aurora />`, `<Starfield />`, `.grain`), waveform-driven
+     hero motion, and choreographed set-piece animations are all welcome —
+     as long as they derive from the sound concept and stay performant.
+   - **Studio** (`/dashboard` and everything behind auth): alive but
+     restrained — always one notch calmer than the Stage. The ambient trio
+     may back the hero prompt; expressive motion is reactive, triggered by
+     real audio or status events (preview playback, generation progress,
+     track ready, publish), never idle decoration.
+
+   On both stages: ambient effects never sit on buttons, cards, borders, or
+   text; the only gradients are the aurora (via `<Aurora />`) and the logo
+   mark; decoration that derives from neither sound nor state stays banned.
+
 6. **Typography does the hierarchy.** Bricolage Grotesque (`--font-display`)
    is only for h1/h2-level headlines and the wordmark — big, confident,
    Lovable-style. Geist Sans is for all body/UI text; Geist Mono is for
@@ -133,17 +143,24 @@ Motion is part of the identity, not garnish. The library is `motion`
    8px rise, ~40–60ms apart, capped at ~320ms total — while the top bar
    stays put. No exit animations, no route-transition libraries, no
    `template.tsx` remounts.
-2. **The hero is the stage.** The ambient signature (drifting aurora,
-   twinkling `<Starfield />`, `.grain`) lives behind hero prompts only.
-   Every other screen is calm: reveals and micro-interactions, no ambient.
-3. **Celebrate the payoff.** When a track flips from composing to ready,
-   the card gets a one-shot ember glow-pop (`.track-ready-pop`, ~700ms).
-   That is the only celebration effect in the product.
-4. **Transform and opacity only.** Never animate layout properties.
+2. **Two tiers of motion.** The Stage (home, auth) may run continuous,
+   choreographed, waveform-derived animation. The Studio is reactive:
+   ambient lives behind the hero prompt, and everything else moves only in
+   response to user action or job progress — never idly. See principle 5.
+3. **Signature moments are budgeted.** The Studio gets at most four
+   celebration/signature effects, each tied to a meaningful event: track
+   flips to ready (`.track-ready-pop`), generation in progress, publish
+   succeeds, schedule armed. Each is one-shot (or runs only while its
+   event is live), and adding a fifth means retiring one.
+4. **Optimistic first.** Feed mutations (approve, publish, retry, cancel)
+   update the card the moment the user acts; the server confirms in the
+   background and failures roll back with a toast. Motion sells the
+   response — the click itself must feel acknowledged in under 100ms.
+5. **Transform and opacity only.** Never animate layout properties.
    `MotionProvider` sets `reducedMotion="user"`, and every CSS animation
    (`.aurora-blob`, `.star`, `.track-ready-pop`) is disabled under
    `prefers-reduced-motion` — new animations must follow both rules.
-5. **Nothing fights the feed.** The feed re-renders on a 4s poll; entrance
+6. **Nothing fights the feed.** The feed re-renders on a 4s poll; entrance
    animations run only when an element mounts, never on data refresh.
 
 ## States

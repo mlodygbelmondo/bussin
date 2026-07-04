@@ -125,6 +125,28 @@ describe("status writer", () => {
     expect(render.started_at).toEqual(expect.any(String));
   });
 
+  it("clears the previous attempt's finished_at when a retried render re-enters running", async () => {
+    const render = {
+      finished_at: "2026-07-04T02:00:00.000Z",
+      id: "render-1",
+      started_at: "2026-07-04T01:00:00.000Z",
+      status: "queued",
+      workspace_id: workspaceId,
+    };
+    const writer = createStatusWriter(
+      createFakeSupabase({ video_renders: [render] }),
+    );
+
+    await writer.updateVideoRenderStatus({
+      status: "running",
+      videoRenderId: "render-1",
+      workspaceId,
+    });
+
+    expect(render.status).toBe("running");
+    expect(render.finished_at).toBeNull();
+  });
+
   it("throws when the row does not exist in the workspace", async () => {
     const writer = createStatusWriter(createFakeSupabase({ tracks: [] }));
 

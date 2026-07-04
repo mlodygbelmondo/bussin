@@ -1,10 +1,14 @@
 "use client";
 
-import { Loader2, RotateCcw, X } from "lucide-react";
+import { RotateCcw, X } from "lucide-react";
 import { motion } from "motion/react";
 import { EASE_OUT, staggerDelay } from "@/components/common/motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  cancelGroupOptimism,
+  retryGroupOptimism,
+} from "@/modules/feed/feed-optimism";
 import type { FeedJobGroup } from "@/modules/feed/feed.types";
 import { formatDateTime } from "@/modules/feed/format";
 import {
@@ -13,6 +17,7 @@ import {
 } from "@/modules/feed/jobs.actions";
 import { getJobGroupStatusPresentation } from "@/modules/feed/status-presentation";
 import { TrackCard } from "@/modules/feed/track-card";
+import { ComposingEqualizer } from "@/modules/feed/track-waveform";
 import { useFeedAction } from "@/modules/feed/use-feed-action";
 
 export function FeedList({
@@ -75,7 +80,13 @@ function JobGroupCard({
             <Button
               data-testid="cancel-generation"
               disabled={pending}
-              onClick={() => run(cancelQueueRequest, { id: group.id })}
+              onClick={() =>
+                run(
+                  cancelQueueRequest,
+                  { id: group.id },
+                  { optimistic: cancelGroupOptimism(group.id) },
+                )
+              }
               size="sm"
               variant="ghost"
             >
@@ -91,7 +102,7 @@ function JobGroupCard({
           className="flex items-center gap-2 border-t border-line/60 px-5 py-3 text-sm text-muted-foreground"
           data-testid="loading-state"
         >
-          <Loader2 className="size-4 animate-spin text-primary" />
+          <ComposingEqualizer />
           Creating {group.trackCount}{" "}
           {group.trackCount === 1 ? "track" : "tracks"}… this usually takes a
           minute or two.
@@ -117,10 +128,11 @@ function JobGroupCard({
             <Button
               disabled={pending}
               onClick={() =>
-                run(retryFailedQueueItem, {
-                  id: group.id,
-                  type: "generation_request",
-                })
+                run(
+                  retryFailedQueueItem,
+                  { id: group.id, type: "generation_request" },
+                  { optimistic: retryGroupOptimism(group.id) },
+                )
               }
               size="sm"
               variant="outline"

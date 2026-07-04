@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowUp, Music, Plus, RefreshCw, Trash2, Upload } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Aurora } from "@/components/common/aurora";
 import { Reveal, staggerDelay } from "@/components/common/motion";
 import { Starfield } from "@/components/common/starfield";
@@ -44,6 +44,11 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
+import {
+  ComposingEqualizer,
+  PlaybackWaveform,
+} from "@/modules/feed/track-waveform";
+import { WAVEFORM_BAR_COUNT } from "@/modules/feed/waveform";
 
 const SURFACE_TOKENS = [
   "background",
@@ -65,26 +70,26 @@ const STATE_TOKENS = [
 
 const LOGOS = [
   { file: "logo-pulse.svg", name: "Pulse", idea: "waveform bars mid-drop" },
-  {
-    file: "logo-play-wave.svg",
-    name: "Play wave",
-    idea: "play button bleeding into audio",
-  },
-  {
-    file: "logo-b-mark.svg",
-    name: "B mark",
-    idea: "monogram built from a bar + wave",
-  },
-  {
-    file: "logo-orbit.svg",
-    name: "Orbit",
-    idea: "spinning record / publish loop",
-  },
 ] as const;
+
+const SIGNATURE_MOMENTS = [
+  { className: "track-ready-pop", label: "Ready" },
+  { className: "track-published-pop", label: "Published" },
+  { className: "track-scheduled-pop", label: "Scheduled" },
+] as const;
+
+const DEMO_PEAKS = Array.from({ length: WAVEFORM_BAR_COUNT }, (_, index) => {
+  const swell = Math.sin((index / WAVEFORM_BAR_COUNT) * Math.PI);
+
+  return Math.min(
+    1,
+    Math.max(0.16, 0.3 + 0.5 * swell + 0.25 * Math.sin(index * 1.7)),
+  );
+});
 
 function MotionDemo() {
   const [revealRun, setRevealRun] = useState(0);
-  const [popping, setPopping] = useState(false);
+  const [moment, setMoment] = useState<string | null>(null);
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -123,17 +128,19 @@ function MotionDemo() {
       <Card>
         <CardHeader>
           <CardTitle className="font-display text-base">
-            Track-ready glow-pop
+            Signature moments
           </CardTitle>
           <CardDescription>
-            One-shot ember celebration when a track flips from composing to
-            ready. The only celebration effect in the product.
+            The Studio&apos;s budget of four: composing equalizer while
+            generation is live, plus one-shot pops for ready (ember), published
+            (success), and schedule armed (amber). Adding a fifth means retiring
+            one.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <div
             className={`flex items-center gap-4 rounded-lg border border-line bg-panel px-4 py-3 ${
-              popping ? "track-ready-pop" : ""
+              moment ?? ""
             }`}
           >
             <span className="grid size-10 place-items-center rounded-md bg-accent text-muted-foreground">
@@ -146,23 +153,78 @@ function MotionDemo() {
               </Badge>
             </div>
           </div>
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <ComposingEqualizer />
+            Composing equalizer — runs only while a track is generating.
+          </p>
         </CardContent>
-        <CardFooter>
-          <Button
-            disabled={popping}
-            onClick={() => {
-              setPopping(true);
-              window.setTimeout(() => setPopping(false), 800);
-            }}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            Trigger
-          </Button>
+        <CardFooter className="gap-2">
+          {SIGNATURE_MOMENTS.map(({ className, label }) => (
+            <Button
+              disabled={moment !== null}
+              key={className}
+              onClick={() => {
+                setMoment(className);
+                window.setTimeout(() => setMoment(null), 900);
+              }}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              {label}
+            </Button>
+          ))}
         </CardFooter>
       </Card>
+
+      <WaveformDemo />
     </div>
+  );
+}
+
+function WaveformDemo() {
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    if (!playing) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setProgress((value) => (value >= 1 ? 0 : value + 1 / WAVEFORM_BAR_COUNT));
+    }, 120);
+
+    return () => window.clearInterval(interval);
+  }, [playing]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="font-display text-base">
+          Playback waveform
+        </CardTitle>
+        <CardDescription>
+          The track&apos;s real audio shape, lit bar-by-bar with preview
+          progress. Appears on a track card only while its preview is playing.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="rounded-lg border border-line bg-panel px-4 py-3">
+          <PlaybackWaveform peaks={DEMO_PEAKS} progress={progress} />
+        </div>
+      </CardContent>
+      <CardFooter>
+        <Button
+          onClick={() => setPlaying((value) => !value)}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          {playing ? "Stop" : "Simulate playback"}
+        </Button>
+      </CardFooter>
+    </Card>
   );
 }
 

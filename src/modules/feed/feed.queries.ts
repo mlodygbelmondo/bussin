@@ -236,7 +236,8 @@ async function loadTrackContext(
     )
     .eq("workspace_id", workspaceId)
     .in("generation_request_id", requestIds)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
 
   if (tracksError) {
     throw new Error(tracksError.message);

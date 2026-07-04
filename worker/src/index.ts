@@ -108,6 +108,7 @@ async function main() {
     queue,
     storage: createWorkerStorageService(supabase),
     suno: createSunoService({
+      callbackUrl: config.sunoCallbackUrl,
       database,
       fallbackApiBaseUrl: config.sunoApiBaseUrl,
       fallbackApiKey: config.sunoApiKey,

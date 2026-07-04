@@ -10,6 +10,8 @@ export type WorkerStorageService = {
     trackId: string;
     audioUrl: string;
   }): Promise<string>;
+  downloadAudio(storagePath: string): Promise<Uint8Array>;
+  downloadImage(storagePath: string): Promise<Uint8Array>;
   downloadVideo(storagePath: string): Promise<Uint8Array>;
   removeTempObjects(paths: string[]): Promise<void>;
   uploadVideo(input: {
@@ -68,21 +70,12 @@ export function createWorkerStorageService(
 
       return storagePath;
     },
-    async downloadVideo(storagePath) {
-      const { data, error } = await client.storage
-        .from("video-renders")
-        .download(storagePath);
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      if (!data) {
-        throw new Error("Video render download returned no data.");
-      }
-
-      return new Uint8Array(await data.arrayBuffer());
-    },
+    downloadAudio: (storagePath) =>
+      downloadFromBucket(client, "audio-assets", storagePath),
+    downloadImage: (storagePath) =>
+      downloadFromBucket(client, "image-assets", storagePath),
+    downloadVideo: (storagePath) =>
+      downloadFromBucket(client, "video-renders", storagePath),
     async removeTempObjects(paths) {
       if (paths.length === 0) {
         return;
@@ -110,6 +103,26 @@ export function createWorkerStorageService(
       return storagePath;
     },
   };
+}
+
+async function downloadFromBucket(
+  client: SupabaseStorageClient,
+  bucket: string,
+  storagePath: string,
+): Promise<Uint8Array> {
+  const { data, error } = await client.storage
+    .from(bucket)
+    .download(storagePath);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) {
+    throw new Error(`Download from ${bucket} returned no data.`);
+  }
+
+  return new Uint8Array(await data.arrayBuffer());
 }
 
 async function assertSafeAudioUrl(

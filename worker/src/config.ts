@@ -15,6 +15,7 @@ export type WorkerConfig = {
   serviceRoleKey: string;
   sunoApiBaseUrl: string;
   sunoApiKey?: string;
+  sunoCallbackUrl: string;
   supabaseUrl: string;
   workerId: string;
 };
@@ -37,6 +38,9 @@ export function loadWorkerConfig(): WorkerConfig {
     ),
     sunoApiBaseUrl: env.SUNO_DEFAULT_API_BASE_URL,
     sunoApiKey: env.SUNO_API_KEY,
+    sunoCallbackUrl:
+      env.SUNO_CALLBACK_URL ??
+      new URL("/api/suno/callback", env.NEXT_PUBLIC_APP_URL).toString(),
     supabaseUrl: env.NEXT_PUBLIC_SUPABASE_URL,
     workerId: env.WORKER_ID ?? `worker-${hostname()}`,
   };

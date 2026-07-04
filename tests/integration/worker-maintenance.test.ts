@@ -248,6 +248,7 @@ function makeWorkerConfig(): WorkerConfig {
     secretsEncryptionKey: "secret",
     serviceRoleKey: "service-role-key",
     sunoApiBaseUrl: "https://api.example.test",
+    sunoCallbackUrl: "https://app.example.test/api/suno/callback",
     supabaseUrl: "http://127.0.0.1:54321",
     workerId: "test-worker",
   };

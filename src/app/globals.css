@@ -202,10 +202,78 @@ body {
   border-radius: var(--radius);
 }
 
+/* One-shot success celebration when a track goes live on YouTube. */
+@keyframes track-published-pop {
+  0% {
+    box-shadow: 0 0 0 0 oklch(0.7 0.15 165 / 0%);
+    transform: scale(1);
+  }
+
+  30% {
+    box-shadow:
+      inset 0 0 0 1px oklch(0.7 0.15 165 / 45%),
+      0 0 36px -6px var(--success);
+    transform: scale(1.012);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 oklch(0.7 0.15 165 / 0%);
+    transform: scale(1);
+  }
+}
+
+.track-published-pop {
+  animation: track-published-pop 0.9s ease-out;
+  border-radius: var(--radius);
+}
+
+/* One-shot amber ring when a schedule is armed — gentler than the pops. */
+@keyframes track-scheduled-pop {
+  0% {
+    box-shadow: 0 0 0 0 oklch(0.79 0.14 80 / 0%);
+  }
+
+  30% {
+    box-shadow:
+      inset 0 0 0 1px oklch(0.79 0.14 80 / 40%),
+      0 0 24px -8px var(--warning);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 oklch(0.79 0.14 80 / 0%);
+  }
+}
+
+.track-scheduled-pop {
+  animation: track-scheduled-pop 0.9s ease-out;
+  border-radius: var(--radius);
+}
+
+/* Composing equalizer + waveform fallback bars: scaleY oscillation only.
+ * Runs solely while generation or preview playback is live — never idle. */
+@keyframes eq-bounce {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+  }
+
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.eq-bar {
+  animation: eq-bounce 1.1s ease-in-out infinite;
+  transform-origin: center;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .aurora-blob,
   .star,
-  .track-ready-pop {
+  .track-ready-pop,
+  .track-published-pop,
+  .track-scheduled-pop,
+  .eq-bar {
     animation: none;
   }
 }
