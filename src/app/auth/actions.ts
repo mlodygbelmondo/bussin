@@ -1,6 +1,6 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { RedirectType, redirect } from "next/navigation";
 import { isMockMode } from "@/lib/app-config";
 import { env } from "@/lib/env";
 import { createWorkspaceClient, escalateToServiceRole } from "@/lib/supabase";
@@ -149,12 +149,12 @@ export async function updatePassword(formData: FormData) {
 
 export async function signOut() {
   if (isMockMode) {
-    redirect("/");
+    redirect("/", RedirectType.replace);
   }
 
   const supabase = await createWorkspaceClient();
   await supabase.auth.signOut();
-  redirect("/");
+  redirect("/", RedirectType.replace);
 }
 
 function authPathWithState(

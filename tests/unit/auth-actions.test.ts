@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   requestPasswordReset,
   signIn,
+  signOut,
   signUp,
   updatePassword,
 } from "@/app/auth/actions";
@@ -45,6 +46,9 @@ const {
 });
 
 vi.mock("next/navigation", () => ({
+  RedirectType: {
+    replace: "replace",
+  },
   redirect: redirectMock,
 }));
 
@@ -253,6 +257,22 @@ describe("auth password reset actions", () => {
       "This reset link is invalid or has expired. Please request a new one.",
     );
     expect(supabaseMock.auth.updateUser).not.toHaveBeenCalled();
+  });
+});
+
+describe("auth sign-out action", () => {
+  beforeEach(() => {
+    resetMocks();
+  });
+
+  it("signs out of Supabase and replaces the current page with the public home page", async () => {
+    supabaseMock.auth.signOut.mockResolvedValue({ error: null });
+
+    const redirectDigest = await captureRedirect(signOut());
+
+    expect(redirectDigest).toContain("/");
+    expect(supabaseMock.auth.signOut).toHaveBeenCalledTimes(1);
+    expect(redirectMock).toHaveBeenCalledWith("/", "replace");
   });
 });
 

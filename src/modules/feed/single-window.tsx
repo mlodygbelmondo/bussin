@@ -117,7 +117,7 @@ export function SingleWindow({
         <section
           className={
             hasHistory
-              ? "sticky top-14 z-10 -mx-4 border-b border-line/60 bg-background/70 px-4 pt-5 pb-4 backdrop-blur-md"
+              ? "sticky top-14 z-10 -mx-4 px-4 pt-5 pb-3"
               : "relative flex flex-1 flex-col justify-center pt-20 pb-12"
           }
         >
@@ -270,23 +270,32 @@ function TopBar({
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {accountMenuExtras}
-              <form action={signOut}>
-                <DropdownMenuItem asChild>
-                  <button
-                    className="w-full"
-                    data-testid="sign-out"
-                    type="submit"
-                  >
-                    <LogOut className="size-4" />
-                    Sign out
-                  </button>
-                </DropdownMenuItem>
-              </form>
+              <SignOutMenuItem />
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
     </header>
+  );
+}
+
+function SignOutMenuItem() {
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <DropdownMenuItem
+      data-testid="sign-out"
+      disabled={pending}
+      onSelect={(event) => {
+        event.preventDefault();
+        startTransition(() => {
+          void signOut();
+        });
+      }}
+    >
+      {pending ? <Loader2 className="size-4 animate-spin" /> : <LogOut />}
+      {pending ? "Signing out..." : "Sign out"}
+    </DropdownMenuItem>
   );
 }
 
