@@ -3,8 +3,7 @@
 import { redirect } from "next/navigation";
 import { isMockMode } from "@/lib/app-config";
 import { env } from "@/lib/env";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient, escalateToServiceRole } from "@/lib/supabase";
 import {
   createAccountProvisioningService,
   createSupabaseAccountProvisioningRepository,
@@ -23,7 +22,7 @@ export async function signIn(formData: FormData) {
     redirect(next);
   }
 
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -54,7 +53,7 @@ export async function signUp(formData: FormData) {
     redirect(next);
   }
 
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const email = String(formData.get("email") ?? "");
   const fullName = String(formData.get("fullName") ?? "");
   const password = String(formData.get("password") ?? "");
@@ -90,7 +89,7 @@ export async function requestPasswordReset(formData: FormData) {
     redirect(FORGOT_PASSWORD_SENT_PATH);
   }
 
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const email = String(formData.get("email") ?? "").trim();
 
   if (email) {
@@ -119,7 +118,7 @@ export async function updatePassword(formData: FormData) {
     redirect(resetPasswordPathWithState(validationError, code));
   }
 
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
 
   // Server Components cannot persist auth cookies, so the recovery code from
   // the email link is exchanged here, inside the server action.
@@ -153,7 +152,7 @@ export async function signOut() {
     redirect("/");
   }
 
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   await supabase.auth.signOut();
   redirect("/");
 }
@@ -196,7 +195,7 @@ async function ensureUserAccountProvisioned(input: {
   }
 
   const service = createAccountProvisioningService(
-    createSupabaseAccountProvisioningRepository(createAdminClient()),
+    createSupabaseAccountProvisioningRepository(escalateToServiceRole()),
   );
 
   await service.ensureUserWorkspace({

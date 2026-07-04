@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isMockMode } from "@/lib/app-config";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 import type { Database } from "@/lib/database.types";
 import type { ScheduledActionResult } from "@/modules/scheduled/scheduled.types";
 import { enqueueWorkerQueueJob } from "@/server/services/worker-queue.service";
@@ -123,7 +123,7 @@ export async function publishScheduledUploadNowAction(
 }
 
 async function requireScheduledContext() {
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -1,6 +1,6 @@
 import { createStorageSignedUrl } from "@/server/services/storage";
 import { isMockMode } from "@/lib/app-config";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 import { getMockTrackPreviewData } from "@/modules/dev/mock-data";
 import type { Database } from "@/lib/database.types";
 import type {
@@ -69,7 +69,7 @@ export async function getTrackPreviewData(
     return getMockTrackPreviewData(trackId);
   }
 
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const { data: membership, error: membershipError } = await supabase
     .from("workspace_members")
     .select("workspace_id")
@@ -215,7 +215,7 @@ export async function getTrackPreviewData(
 }
 
 async function loadChannel(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof createWorkspaceClient>>,
   workspaceId: string,
   channelId: string | null,
 ): Promise<TrackPreviewChannel | null> {
@@ -246,7 +246,7 @@ async function loadChannel(
 }
 
 async function loadLatestRender(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof createWorkspaceClient>>,
   workspaceId: string,
   trackId: string,
 ): Promise<TrackPreviewRender | null> {
@@ -276,7 +276,7 @@ async function loadLatestRender(
 }
 
 async function loadLatestUpload(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof createWorkspaceClient>>,
   workspaceId: string,
   trackId: string,
 ): Promise<TrackPreviewUpload | null> {

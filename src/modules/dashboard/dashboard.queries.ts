@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 import { isMockMode } from "@/lib/app-config";
 import { mockDashboardHomeData } from "@/modules/dev/mock-data";
 import type { Database } from "@/lib/database.types";
@@ -36,7 +36,7 @@ export async function getDashboardHomeData(
     return mockDashboardHomeData;
   }
 
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const { data: membership } = await supabase
     .from("workspace_members")
     .select("workspace_id")

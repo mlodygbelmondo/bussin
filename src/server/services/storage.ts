@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { escalateToServiceRole } from "@/lib/supabase";
 
 export const privateStorageBuckets = [
   "image-assets",
@@ -50,7 +50,7 @@ export async function createStorageSignedUrl(
 ): Promise<string> {
   const { bucket, expiresIn, path, requesterUserId, workspaceId } =
     signedUrlRequestSchema.parse(input);
-  const supabase = createAdminClient();
+  const supabase = escalateToServiceRole();
 
   const { data: membership, error: membershipError } = await supabase
     .from("workspace_members")

@@ -37,7 +37,7 @@ import {
   getOnboardingData,
 } from "@/modules/onboarding/onboarding.queries";
 import type { OnboardingData } from "@/modules/onboarding/onboarding.types";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 
 const steps = [
   "Connect Suno",
@@ -168,7 +168,7 @@ async function loadOnboardingData() {
     });
   }
 
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -1,6 +1,6 @@
 import { createStorageSignedUrl } from "@/server/services/storage";
 import { isMockMode } from "@/lib/app-config";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 import { getMockLibraryScreenData } from "@/modules/dev/mock-data";
 import type { Database } from "@/lib/database.types";
 import type {
@@ -62,7 +62,7 @@ type PromptRow = Pick<
   "duration_seconds" | "final_prompt" | "mood" | "style"
 >;
 
-type Supabase = Awaited<ReturnType<typeof createClient>>;
+type Supabase = Awaited<ReturnType<typeof createWorkspaceClient>>;
 type LibrarySearchRpcClient = Supabase & {
   rpc(
     fn: "search_library_tracks",
@@ -88,7 +88,7 @@ export async function getLibraryScreenData(
     return getMockLibraryScreenData(filters, pageNumber);
   }
 
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const { data: membership, error: membershipError } = await supabase
     .from("workspace_members")
     .select("workspace_id")

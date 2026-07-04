@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { isMockMode, mockUser } from "@/lib/app-config";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 import {
   ChannelLimitFooter,
   ChannelsGrid,
@@ -19,7 +19,7 @@ export default async function ChannelsPage({
 }: ChannelsPageProps) {
   const user = isMockMode
     ? { id: mockUser.id }
-    : (await (await createClient()).auth.getUser()).data.user;
+    : (await (await createWorkspaceClient()).auth.getUser()).data.user;
 
   if (!user) {
     redirect("/login");

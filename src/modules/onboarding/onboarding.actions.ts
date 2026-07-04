@@ -4,8 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isMockMode } from "@/lib/app-config";
 import { env } from "@/lib/env";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient, escalateToServiceRole } from "@/lib/supabase";
 import { createYouTubeOAuthClient } from "@/lib/integrations/youtube";
 import {
   createSunoConnectionActions,
@@ -31,7 +30,7 @@ const SAFE_SUNO_CONNECTION_SELECT =
   "id, workspace_id, label, status, credits_left, monthly_limit, monthly_usage, last_checked_at, last_error, created_at, updated_at";
 
 async function requireWorkspace() {
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -53,7 +52,7 @@ async function requireWorkspace() {
 
   if (!data) {
     const provisioning = createAccountProvisioningService(
-      createSupabaseAccountProvisioningRepository(createAdminClient()),
+      createSupabaseAccountProvisioningRepository(escalateToServiceRole()),
     );
     const { workspaceId } = await provisioning.ensureUserWorkspace({
       email: user.email,
@@ -182,7 +181,7 @@ export async function completeOnboardingAction(formData: FormData) {
 
 async function persistDefaults(input: {
   formData: FormData;
-  supabase: Awaited<ReturnType<typeof createClient>>;
+  supabase: Awaited<ReturnType<typeof createWorkspaceClient>>;
   workspaceId: string;
 }) {
   const channelId = String(input.formData.get("defaultChannelId") ?? "");
@@ -227,7 +226,7 @@ async function persistDefaults(input: {
 }
 
 function createSunoRepository(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof createWorkspaceClient>>,
 ): SunoConnectionRepository {
   return {
     async createConnection(input) {

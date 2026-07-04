@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json, TablesInsert } from "@/lib/database.types";
 import { isMockMode } from "@/lib/app-config";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 import { effectiveBillingPlan } from "@/server/services/plan-limits.service";
 import {
   createTrackService,
@@ -506,7 +506,7 @@ async function enqueueYoutubeUpload(
 }
 
 async function requireWorkspace() {
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

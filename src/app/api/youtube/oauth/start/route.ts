@@ -6,7 +6,7 @@ import {
   createYouTubeOAuthClient,
   youtubeScopes,
 } from "@/lib/integrations/youtube";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 import {
   getSafeOAuthReturnPath,
   YOUTUBE_OAUTH_STATE_COOKIE,
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/dashboard/channels", requestUrl));
   }
 
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -67,7 +67,7 @@ export async function GET(request: Request) {
 
 async function resolveWorkspaceId(input: {
   requestedWorkspaceId: string | null;
-  supabase: Awaited<ReturnType<typeof createClient>>;
+  supabase: Awaited<ReturnType<typeof createWorkspaceClient>>;
   userId: string;
 }) {
   let query = input.supabase

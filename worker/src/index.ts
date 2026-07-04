@@ -77,6 +77,9 @@ async function main() {
     });
   }
 
+  // The worker is a separate runtime with no user session; it deliberately
+  // runs on the service role. App code must not do this — it goes through
+  // the acquisition seam in src/lib/supabase/index.ts instead.
   const supabase = createClient(config.supabaseUrl, config.serviceRoleKey, {
     auth: {
       autoRefreshToken: false,

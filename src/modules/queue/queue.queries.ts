@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 import { isMockMode } from "@/lib/app-config";
 import { getMockGenerationQueueData } from "@/modules/dev/mock-data";
 import type { Database } from "@/lib/database.types";
@@ -76,7 +76,7 @@ export async function getGenerationQueueData(
     return getMockGenerationQueueData(filters);
   }
 
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const { data: membership, error: membershipError } = await supabase
     .from("workspace_members")
     .select("workspace_id")

@@ -5,8 +5,7 @@ import { redirect } from "next/navigation";
 import { isMockMode } from "@/lib/app-config";
 import { env } from "@/lib/env";
 import { createYouTubeOAuthClient } from "@/lib/integrations/youtube";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient, escalateToServiceRole } from "@/lib/supabase";
 import {
   createSunoConnectionActions,
   type SunoConnectionRepository,
@@ -21,7 +20,7 @@ import type { ChannelsActionResult } from "@/modules/channels/channels.types";
 
 type WorkspaceContext = {
   role: string | null;
-  supabase: Awaited<ReturnType<typeof createClient>>;
+  supabase: Awaited<ReturnType<typeof createWorkspaceClient>>;
   userId: string;
   workspaceId: string;
 };
@@ -172,7 +171,7 @@ export async function syncYoutubeChannelsAction(
     return { message: "Workspace admin access required.", ok: false };
   }
 
-  const admin = createAdminClient();
+  const admin = escalateToServiceRole();
   const { data: connection, error } = await admin
     .from("youtube_connections")
     .select(
@@ -270,7 +269,7 @@ export async function testSunoConnectionAction(): Promise<ChannelsActionResult> 
     return { message: "Workspace admin access required.", ok: false };
   }
 
-  const admin = createAdminClient();
+  const admin = escalateToServiceRole();
   const { data: connection, error } = await admin
     .from("suno_connections")
     .select("id, encrypted_api_url, encrypted_cookie")
@@ -331,7 +330,7 @@ export async function testSunoConnectionAction(): Promise<ChannelsActionResult> 
 }
 
 async function requireWorkspace(): Promise<WorkspaceContext> {
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -368,7 +367,7 @@ function canManageIntegrations(role: string | null | undefined) {
 }
 
 function createYoutubeRepository(
-  admin: ReturnType<typeof createAdminClient>,
+  admin: ReturnType<typeof escalateToServiceRole>,
 ): Pick<
   YoutubeConnectionRepository,
   "getBillingPlan" | "getDefaultChannelId" | "listChannelIds" | "upsertChannel"
@@ -431,7 +430,7 @@ function createYoutubeRepository(
 }
 
 function createSunoRepository(
-  admin: ReturnType<typeof createAdminClient>,
+  admin: ReturnType<typeof escalateToServiceRole>,
 ): SunoConnectionRepository {
   return {
     async createConnection() {
@@ -472,7 +471,7 @@ async function audit(input: {
   action: string;
   entityId: string;
   entityType: string;
-  supabase: Awaited<ReturnType<typeof createClient>>;
+  supabase: Awaited<ReturnType<typeof createWorkspaceClient>>;
   userId: string;
   workspaceId: string;
 }) {

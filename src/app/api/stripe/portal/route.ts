@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { isMockMode } from "@/lib/app-config";
 import { env } from "@/lib/env";
 import { createStripe } from "@/lib/integrations/stripe";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 
 export async function POST() {
   if (isMockMode) {
@@ -11,7 +11,7 @@ export async function POST() {
     });
   }
 
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

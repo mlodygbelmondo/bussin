@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 import { isMockMode } from "@/lib/app-config";
 import { mockGenerateScreenData } from "@/modules/dev/mock-data";
 import { getPlanLimits } from "@/server/services/plan-limits.service";
@@ -13,7 +13,7 @@ export async function getGenerateScreenData(
     return mockGenerateScreenData;
   }
 
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const { data: membership, error: membershipError } = await supabase
     .from("workspace_members")
     .select("workspace_id")

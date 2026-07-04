@@ -21,7 +21,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { isMockMode } from "@/lib/app-config";
 import { APP_NAME } from "@/lib/app-public-config";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 
 type AuthPanel = "login" | "signup";
 type AuthSearchParams = {
@@ -48,7 +48,7 @@ export async function AuthScreen({
   const next = safeRedirectPath(singleParam(params.next));
   const user = isMockMode
     ? null
-    : (await (await createClient()).auth.getUser()).data.user;
+    : (await (await createWorkspaceClient()).auth.getUser()).data.user;
 
   if (user) {
     redirect(next);

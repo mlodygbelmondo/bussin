@@ -1,6 +1,6 @@
 import { createStorageSignedUrl } from "@/server/services/storage";
 import { isMockMode } from "@/lib/app-config";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 import { getMockScheduledUploadsData } from "@/modules/dev/mock-data";
 import type { Database } from "@/lib/database.types";
 import type {
@@ -56,7 +56,7 @@ export async function getScheduledUploadsData(
     return getMockScheduledUploadsData(filters);
   }
 
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const { data: membership, error: membershipError } = await supabase
     .from("workspace_members")
     .select("workspace_id")

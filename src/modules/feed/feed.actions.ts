@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { isMockMode } from "@/lib/app-config";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 import { createGenerationRepository } from "@/modules/generation/generation.repository";
 import type { FeedActionResult } from "@/modules/feed/feed.types";
 import { createGenerationRequestService } from "@/server/services/generation-request.service";
@@ -149,7 +149,7 @@ export async function updateTrackDetailsAction(
 }
 
 async function requireWorkspace() {
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
