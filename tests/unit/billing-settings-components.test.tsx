@@ -121,6 +121,8 @@ function makeData(): BillingPageData {
       notifyGenerationCompletions: true,
       notifyMarketingEmails: false,
       notifyProductUpdates: true,
+      youtubeDescriptionTemplate: null,
+      youtubeTitleTemplate: null,
       timezone: "America/Los_Angeles",
     },
     status: "active",

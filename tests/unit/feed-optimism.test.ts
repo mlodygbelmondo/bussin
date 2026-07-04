@@ -58,6 +58,11 @@ function buildFeed(groups: FeedJobGroup[]): FeedData {
     },
     groups,
     hasActiveWork: false,
+    publishDefaults: {
+      descriptionTemplate: null,
+      privacyStatus: "private",
+      titleTemplate: null,
+    },
     usage: { limit: 10, plan: "trial", used: 2 },
     user: { displayName: "Piotr", email: "p@example.com", initials: "P" },
   };

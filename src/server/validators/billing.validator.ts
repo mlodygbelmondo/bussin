@@ -30,6 +30,8 @@ export const workspaceSettingsSchema = z.object({
   notify_marketing_emails: z.boolean(),
   notify_product_updates: z.boolean(),
   timezone: z.string().trim().min(1).max(80),
+  youtube_description_template: z.string().trim().max(5000).nullable(),
+  youtube_title_template: z.string().trim().max(100).nullable(),
 });
 
 export type BillingCheckoutInput = z.input<typeof billingCheckoutSchema>;

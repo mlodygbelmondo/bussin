@@ -177,6 +177,8 @@ export const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettingsData = {
   notifyMarketingEmails: false,
   notifyProductUpdates: true,
   timezone: "America/Los_Angeles",
+  youtubeDescriptionTemplate: null,
+  youtubeTitleTemplate: null,
 };
 
 function toWorkspaceSettingsData(
@@ -198,6 +200,8 @@ function toWorkspaceSettingsData(
     notify_marketing_emails?: boolean | null;
     notify_product_updates?: boolean | null;
     timezone?: string | null;
+    youtube_description_template?: string | null;
+    youtube_title_template?: string | null;
   } | null,
 ): WorkspaceSettingsData {
   return {
@@ -242,5 +246,7 @@ function toWorkspaceSettingsData(
       settings?.notify_product_updates ??
       DEFAULT_WORKSPACE_SETTINGS.notifyProductUpdates,
     timezone: settings?.timezone ?? DEFAULT_WORKSPACE_SETTINGS.timezone,
+    youtubeDescriptionTemplate: settings?.youtube_description_template ?? null,
+    youtubeTitleTemplate: settings?.youtube_title_template ?? null,
   };
 }

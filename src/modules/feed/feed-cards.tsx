@@ -9,7 +9,10 @@ import {
   cancelGroupOptimism,
   retryGroupOptimism,
 } from "@/modules/feed/feed-optimism";
-import type { FeedJobGroup } from "@/modules/feed/feed.types";
+import type {
+  FeedJobGroup,
+  FeedPublishDefaults,
+} from "@/modules/feed/feed.types";
 import { formatDateTime } from "@/modules/feed/format";
 import {
   cancelQueueRequest,
@@ -23,9 +26,11 @@ import { useFeedAction } from "@/modules/feed/use-feed-action";
 export function FeedList({
   channelTitle,
   groups,
+  publishDefaults,
 }: {
   channelTitle: string | null;
   groups: FeedJobGroup[];
+  publishDefaults: FeedPublishDefaults;
 }) {
   return (
     <div className="space-y-4 pt-2" data-testid="feed">
@@ -35,6 +40,7 @@ export function FeedList({
           group={group}
           index={index}
           key={group.id}
+          publishDefaults={publishDefaults}
         />
       ))}
     </div>
@@ -45,10 +51,12 @@ function JobGroupCard({
   channelTitle,
   group,
   index,
+  publishDefaults,
 }: {
   channelTitle: string | null;
   group: FeedJobGroup;
   index: number;
+  publishDefaults: FeedPublishDefaults;
 }) {
   const { pending, run } = useFeedAction();
   const isActive = group.status === "queued" || group.status === "running";
@@ -148,6 +156,7 @@ function JobGroupCard({
           {group.tracks.map((track) => (
             <TrackCard
               channelTitle={channelTitle}
+              publishDefaults={publishDefaults}
               key={track.id}
               track={track}
             />

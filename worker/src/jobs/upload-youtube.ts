@@ -56,6 +56,7 @@ export async function uploadYoutubeJob(
     description: context.description,
     encryptedAccessToken: context.encryptedAccessToken,
     encryptedRefreshToken: context.encryptedRefreshToken,
+    madeForKids: context.madeForKids,
     privacyStatus: context.privacyStatus,
     tags: context.tags,
     title: context.title,

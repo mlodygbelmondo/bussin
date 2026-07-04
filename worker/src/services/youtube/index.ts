@@ -13,6 +13,7 @@ export type YoutubeService = {
     youtubeChannelId: string;
     title: string;
     description?: string | null;
+    madeForKids?: boolean;
     encryptedAccessToken: string;
     encryptedRefreshToken: string;
     tags?: string[] | null;
@@ -74,6 +75,7 @@ export function createYoutubeService(input: {
 
         return await adapter.uploadVideo({
           description: request.description,
+          madeForKids: request.madeForKids,
           privacyStatus: request.privacyStatus,
           tags: request.tags,
           title: request.title,

@@ -34,6 +34,13 @@ const scheduleSchema = trackIdSchema.extend({
   scheduled_at: z.string(),
 });
 
+const publishMetadataSchema = trackIdSchema.extend({
+  description: z.string().trim().max(5000),
+  made_for_kids: z.boolean(),
+  privacy_status: z.enum(["private", "unlisted", "public"]),
+  title: z.string().trim().min(1).max(100),
+});
+
 const readTrackIdValues = (form: FormData) => ({
   trackId: String(form.get("trackId") ?? ""),
 });
@@ -106,6 +113,18 @@ export async function publishTrackNowAction(
     async run({ ctx, input }) {
       const { supabase, userId, workspaceId } = ctx;
       const { trackId } = input;
+
+      // The publish dialog's metadata lands on the track first so the feed
+      // and any reused upload row stay in sync with what gets published.
+      await throwOnError(
+        supabase
+          .from("tracks")
+          .update({ description: input.description, title: input.title })
+          .eq("workspace_id", workspaceId)
+          .eq("id", trackId)
+          .not("status", "in", "(uploaded)"),
+      );
+
       const context = await ensureRenderContext({
         supabase,
         trackId,
@@ -122,6 +141,12 @@ export async function publishTrackNowAction(
       }
 
       const upload = await createOrReuseYoutubeUpload({
+        metadata: {
+          description: input.description,
+          made_for_kids: input.made_for_kids,
+          privacy_status: input.privacy_status,
+          title: input.title,
+        },
         ensureCanCreate: () =>
           assertUploadWithinPlanLimits(supabase, workspaceId, "publish_now"),
         scheduledAt: null,
@@ -160,8 +185,14 @@ export async function publishTrackNowAction(
 
       return { message: "Publishing job queued.", ok: true };
     },
-    schema: trackIdSchema,
-    values: readTrackIdValues,
+    schema: publishMetadataSchema,
+    values: (form) => ({
+      ...readTrackIdValues(form),
+      description: String(form.get("description") ?? ""),
+      made_for_kids: form.get("made_for_kids") === "true",
+      privacy_status: String(form.get("privacy_status") ?? "private"),
+      title: String(form.get("title") ?? ""),
+    }),
   });
 }
 
@@ -296,8 +327,16 @@ async function loadLatestRender(
   );
 }
 
+type PublishMetadata = {
+  description: string;
+  made_for_kids: boolean;
+  privacy_status: "private" | "unlisted" | "public";
+  title: string;
+};
+
 async function createOrReuseYoutubeUpload(input: {
   ensureCanCreate?: () => Promise<void>;
+  metadata?: PublishMetadata;
   scheduledAt: string | null;
   status: "draft" | "scheduled";
   supabase: Supabase;
@@ -316,6 +355,16 @@ async function createOrReuseYoutubeUpload(input: {
   }
 
   if (existing) {
+    if (input.metadata && ["draft", "scheduled"].includes(existing.status)) {
+      await throwOnError(
+        input.supabase
+          .from("youtube_uploads")
+          .update(input.metadata)
+          .eq("workspace_id", input.workspaceId)
+          .eq("id", existing.id),
+      );
+    }
+
     return { ...existing, created: false };
   }
 
@@ -327,12 +376,13 @@ async function createOrReuseYoutubeUpload(input: {
     input.supabase
       .from("youtube_uploads")
       .insert({
-        description: track.description,
-        privacy_status: "private",
+        description: input.metadata?.description ?? track.description,
+        made_for_kids: input.metadata?.made_for_kids ?? false,
+        privacy_status: input.metadata?.privacy_status ?? "private",
         scheduled_at: input.scheduledAt,
         status: input.status,
         tags: track.tags,
-        title: track.title ?? "Bussin Track",
+        title: input.metadata?.title ?? track.title ?? "Bussin Track",
         track_id: input.trackId,
         video_render_id: input.videoRenderId,
         workspace_id: input.workspaceId,

@@ -15,6 +15,7 @@ import {
 import { useState } from "react";
 import { Reveal } from "@/components/common/motion";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
   DialogContent,
@@ -39,15 +40,14 @@ import {
   discardTrackOptimism,
   editTrackDetailsOptimism,
   publishScheduledEarlyOptimism,
-  publishTrackOptimism,
   retryTrackOptimism,
   scheduleTrackOptimism,
 } from "@/modules/feed/feed-optimism";
-import type { FeedTrack } from "@/modules/feed/feed.types";
-import { formatDuration, toDatetimeLocalValue } from "@/modules/feed/format";
+import type { FeedPublishDefaults, FeedTrack } from "@/modules/feed/feed.types";
+import { formatDuration } from "@/modules/feed/format";
 import { retryFailedQueueItem } from "@/modules/feed/jobs.actions";
+import { PublishDialog } from "@/modules/feed/publish-dialog";
 import {
-  publishTrackNowAction,
   rejectTrackAction,
   scheduleTrackAction,
 } from "@/modules/feed/publish.actions";
@@ -67,13 +67,16 @@ import { useFeedAction } from "@/modules/feed/use-feed-action";
 
 export function TrackCard({
   channelTitle,
+  publishDefaults,
   track,
 }: {
   channelTitle: string | null;
+  publishDefaults: FeedPublishDefaults;
   track: FeedTrack;
 }) {
   const { pending, run } = useFeedAction();
   const [editing, setEditing] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [scheduling, setScheduling] = useState(false);
   const preview = useAudioPreview(track.audioUrl);
   const peaks = useWaveformPeaks(preview.src);
@@ -118,7 +121,12 @@ export function TrackCard({
               playing={preview.playing}
             />
           ) : null}
-          <PrimaryTrackAction pending={pending} run={run} track={track} />
+          <PrimaryTrackAction
+            onPublish={() => setPublishing(true)}
+            pending={pending}
+            run={run}
+            track={track}
+          />
           <TrackMoreMenu
             pending={pending}
             run={run}
@@ -156,8 +164,21 @@ export function TrackCard({
         </div>
       ) : null}
 
+      {track.status === "generating" ? (
+        <ComposingNameField track={track} />
+      ) : null}
+
       {editing ? (
         <EditDetailsForm onDone={() => setEditing(false)} track={track} />
+      ) : null}
+
+      {publishing ? (
+        <PublishDialog
+          defaults={publishDefaults}
+          onOpenChange={setPublishing}
+          open={publishing}
+          track={track}
+        />
       ) : null}
 
       <ScheduleDialog
@@ -170,10 +191,12 @@ export function TrackCard({
 }
 
 function PrimaryTrackAction({
+  onPublish,
   pending,
   run,
   track,
 }: {
+  onPublish: () => void;
   pending: boolean;
   run: ReturnType<typeof useFeedAction>["run"];
   track: FeedTrack;
@@ -183,13 +206,7 @@ function PrimaryTrackAction({
       <Button
         data-testid="publish-now"
         disabled={pending}
-        onClick={() =>
-          run(
-            publishTrackNowAction,
-            { trackId: track.id },
-            { optimistic: publishTrackOptimism(track.id) },
-          )
-        }
+        onClick={onPublish}
         size="sm"
       >
         Publish
@@ -410,6 +427,112 @@ function EditDetailsForm({
   );
 }
 
+/**
+ * Composing tracks show an inline name field so the wait is useful — the
+ * title lands on the track (and later the YouTube upload) via the normal
+ * details action.
+ */
+function ComposingNameField({ track }: { track: FeedTrack }) {
+  const { pending, run } = useFeedAction();
+  const [title, setTitle] = useState(track.title);
+  const dirty = title.trim() !== track.title && title.trim().length > 0;
+
+  function save() {
+    if (!dirty || pending) {
+      return;
+    }
+
+    run(
+      updateTrackDetailsAction,
+      {
+        description: track.description ?? "",
+        tags: track.tags.join(","),
+        title: title.trim(),
+        trackId: track.id,
+      },
+      {
+        optimistic: editTrackDetailsOptimism(track.id, {
+          description: track.description ?? "",
+          tags: track.tags.join(","),
+          title: title.trim(),
+        }),
+      },
+    );
+  }
+
+  return (
+    <div className="mt-3 flex items-center gap-2">
+      <Input
+        aria-label="Name this track"
+        className="h-8 max-w-xs text-sm"
+        data-testid="composing-name-input"
+        maxLength={100}
+        onChange={(event) => setTitle(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            save();
+          }
+        }}
+        placeholder="Name this track while it composes…"
+        value={title}
+      />
+      {dirty ? (
+        <Button
+          data-testid="composing-name-save"
+          disabled={pending}
+          onClick={save}
+          size="sm"
+          variant="outline"
+        >
+          Save
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function isFutureDate(date: Date) {
+  return date.getTime() > Date.now();
+}
+
+const SCHEDULE_PRESETS: Array<{ label: string; at: () => Date }> = [
+  {
+    at: () => {
+      const date = new Date();
+
+      date.setDate(date.getDate() + 1);
+      date.setHours(18, 0, 0, 0);
+
+      return date;
+    },
+    label: "Tomorrow 18:00",
+  },
+  {
+    at: () => {
+      const date = new Date();
+      const daysUntilSaturday = (6 - date.getDay() + 7) % 7 || 7;
+
+      date.setDate(date.getDate() + daysUntilSaturday);
+      date.setHours(12, 0, 0, 0);
+
+      return date;
+    },
+    label: "Saturday 12:00",
+  },
+  {
+    at: () => {
+      const date = new Date();
+
+      date.setDate(date.getDate() + 7);
+      date.setHours(18, 0, 0, 0);
+
+      return date;
+    },
+    label: "In a week",
+  },
+];
+
 function ScheduleDialog({
   onOpenChange,
   open,
@@ -420,10 +543,52 @@ function ScheduleDialog({
   trackId: string;
 }) {
   const { pending, run } = useFeedAction();
-  const [scheduledAt, setScheduledAt] = useState("");
-  const [minScheduledAt] = useState(() =>
-    toDatetimeLocalValue(new Date(Date.now() + 60_000)),
-  );
+  const [selectedDay, setSelectedDay] = useState<Date | undefined>();
+  const [time, setTime] = useState("18:00");
+  const [today] = useState(() => {
+    const date = new Date();
+
+    date.setHours(0, 0, 0, 0);
+
+    return date;
+  });
+
+  function composeScheduledDate(): Date | null {
+    if (!selectedDay) {
+      return null;
+    }
+
+    const [hours = 0, minutes = 0] = time.split(":").map(Number);
+    const date = new Date(selectedDay);
+
+    date.setHours(hours, minutes, 0, 0);
+
+    return date;
+  }
+
+  function confirm(date: Date | null) {
+    if (!date || !Number.isFinite(date.getTime())) {
+      toast.error("Pick a date and time first.");
+
+      return;
+    }
+
+    if (!isFutureDate(date)) {
+      toast.error("Pick a time in the future");
+
+      return;
+    }
+
+    const scheduledIso = date.toISOString();
+
+    run(
+      scheduleTrackAction,
+      { scheduled_at: scheduledIso, trackId },
+      { optimistic: scheduleTrackOptimism(trackId, scheduledIso) },
+    );
+    // Optimistic-first: the card already shows the schedule.
+    onOpenChange(false);
+  }
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
@@ -434,43 +599,44 @@ function ScheduleDialog({
             We&apos;ll publish the video to YouTube at this time.
           </DialogDescription>
         </DialogHeader>
-        <Input
-          aria-label="Schedule time"
-          data-testid="schedule-input"
-          min={minScheduledAt}
-          onChange={(event) => setScheduledAt(event.target.value)}
-          type="datetime-local"
-          value={scheduledAt}
-        />
+        <div className="flex flex-wrap gap-2">
+          {SCHEDULE_PRESETS.map((preset) => (
+            <button
+              className="rounded-full border border-line bg-panel/50 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+              data-testid="schedule-preset"
+              disabled={pending}
+              key={preset.label}
+              onClick={() => confirm(preset.at())}
+              type="button"
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+        <div className="rounded-md border border-border">
+          <Calendar
+            disabled={{ before: today }}
+            mode="single"
+            onSelect={setSelectedDay}
+            selected={selectedDay}
+          />
+        </div>
+        <label className="flex items-center gap-2 text-sm font-medium">
+          Time
+          <Input
+            aria-label="Schedule time"
+            className="h-9 w-28"
+            data-testid="schedule-input"
+            onChange={(event) => setTime(event.target.value)}
+            type="time"
+            value={time}
+          />
+        </label>
         <DialogFooter>
           <Button
             data-testid="schedule-confirm"
-            disabled={pending || !scheduledAt}
-            onClick={() => {
-              const scheduledDate = new Date(scheduledAt);
-
-              if (!Number.isFinite(scheduledDate.getTime())) {
-                toast.error("Pick a date and time first.");
-
-                return;
-              }
-
-              if (scheduledDate.getTime() <= Date.now()) {
-                toast.error("Pick a time in the future");
-
-                return;
-              }
-
-              const scheduledIso = scheduledDate.toISOString();
-
-              run(
-                scheduleTrackAction,
-                { scheduled_at: scheduledIso, trackId },
-                { optimistic: scheduleTrackOptimism(trackId, scheduledIso) },
-              );
-              // Optimistic-first: the card already shows the schedule.
-              onOpenChange(false);
-            }}
+            disabled={pending || !selectedDay}
+            onClick={() => confirm(composeScheduledDate())}
           >
             <CalendarClock className="size-4" />
             Schedule

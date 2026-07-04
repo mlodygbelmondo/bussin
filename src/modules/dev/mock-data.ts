@@ -96,6 +96,11 @@ export const mockFeedData: FeedData = {
     },
   ],
   hasActiveWork: true,
+  publishDefaults: {
+    descriptionTemplate: null,
+    privacyStatus: "private",
+    titleTemplate: null,
+  },
   usage: {
     limit: 10,
     plan: "trial",
@@ -131,6 +136,8 @@ const mockWorkspaceSettings = {
   notifyMarketingEmails: false,
   notifyProductUpdates: true,
   timezone: "America/Los_Angeles",
+  youtubeDescriptionTemplate: null,
+  youtubeTitleTemplate: null,
 };
 const paidPlans = [
   {

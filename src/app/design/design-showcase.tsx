@@ -7,6 +7,7 @@ import { Reveal, staggerDelay } from "@/components/common/motion";
 import { Starfield } from "@/components/common/starfield";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Card,
   CardContent,
@@ -388,6 +389,12 @@ export function DesignShowcase() {
           <Input aria-invalid placeholder="Invalid input" />
           <Input disabled placeholder="Disabled" />
           <Textarea placeholder="Prompt: dreamy lo-fi with vinyl crackle…" />
+        </div>
+      </Section>
+
+      <Section title="Calendar">
+        <div className="inline-block rounded-md border border-border bg-card">
+          <Calendar mode="single" />
         </div>
       </Section>
 

@@ -649,6 +649,8 @@ export type Database = {
           timezone: string;
           updated_at: string;
           workspace_id: string;
+          youtube_description_template: string | null;
+          youtube_title_template: string | null;
         };
         Insert: {
           auto_normalize_audio?: boolean;
@@ -671,6 +673,8 @@ export type Database = {
           timezone?: string;
           updated_at?: string;
           workspace_id: string;
+          youtube_description_template?: string | null;
+          youtube_title_template?: string | null;
         };
         Update: {
           auto_normalize_audio?: boolean;
@@ -693,6 +697,8 @@ export type Database = {
           timezone?: string;
           updated_at?: string;
           workspace_id?: string;
+          youtube_description_template?: string | null;
+          youtube_title_template?: string | null;
         };
         Relationships: [
           {
@@ -858,6 +864,7 @@ export type Database = {
           description: string | null;
           failure_reason: string | null;
           id: string;
+          made_for_kids: boolean;
           privacy_status: Database["public"]["Enums"]["youtube_privacy_status"];
           scheduled_at: string | null;
           status: string;
@@ -876,6 +883,7 @@ export type Database = {
           description?: string | null;
           failure_reason?: string | null;
           id?: string;
+          made_for_kids?: boolean;
           privacy_status?: Database["public"]["Enums"]["youtube_privacy_status"];
           scheduled_at?: string | null;
           status?: string;
@@ -894,6 +902,7 @@ export type Database = {
           description?: string | null;
           failure_reason?: string | null;
           id?: string;
+          made_for_kids?: boolean;
           privacy_status?: Database["public"]["Enums"]["youtube_privacy_status"];
           scheduled_at?: string | null;
           status?: string;

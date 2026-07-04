@@ -13,6 +13,7 @@ import type {
 const youtubeUploadInputSchema = z
   .object({
     description: z.string().max(5000).nullish(),
+    madeForKids: z.boolean().optional(),
     privacyStatus: z.enum(["private", "unlisted", "public"]),
     publishAt: z.string().datetime().nullish(),
     tags: z.array(z.string().trim().min(1)).max(50).nullish(),
@@ -113,6 +114,7 @@ export function createYoutubeUploadAdapter(input: {
             status: {
               privacyStatus: parsed.privacyStatus,
               publishAt: parsed.publishAt ?? undefined,
+              selfDeclaredMadeForKids: parsed.madeForKids ?? false,
             },
           },
         });

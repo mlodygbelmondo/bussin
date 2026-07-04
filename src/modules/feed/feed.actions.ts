@@ -92,6 +92,73 @@ export async function createFeedGenerationAction(
   });
 }
 
+const MAX_COVER_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+export async function uploadTrackCoverAction(
+  formData: FormData,
+): Promise<FeedActionResult> {
+  return runFeedAction({
+    errorFallback: "Could not upload the cover.",
+    formData,
+    invalidMessage: "Invalid cover upload.",
+    mockMessage: "Mock cover uploaded.",
+    async run({ ctx, input }) {
+      const file = formData.get("cover");
+
+      if (!(file instanceof File) || !file.type.startsWith("image/")) {
+        return { message: "Choose an image file.", ok: false };
+      }
+
+      if (file.size > MAX_COVER_UPLOAD_BYTES) {
+        return { message: "Covers must be 10 MB or smaller.", ok: false };
+      }
+
+      const extension = file.type === "image/png" ? "png" : "jpg";
+      const storagePath = `${ctx.workspaceId}/covers/custom-${input.trackId}.${extension}`;
+      const { error: uploadError } = await ctx.supabase.storage
+        .from("image-assets")
+        .upload(storagePath, file, { contentType: file.type, upsert: true });
+
+      if (uploadError) {
+        return { message: uploadError.message, ok: false };
+      }
+
+      const { data: image, error: imageError } = await ctx.supabase
+        .from("image_assets")
+        .upsert(
+          {
+            file_name: file.name,
+            mime_type: file.type,
+            source: "uploaded",
+            storage_path: storagePath,
+            workspace_id: ctx.workspaceId,
+          },
+          { onConflict: "workspace_id,storage_path" },
+        )
+        .select("id")
+        .single();
+
+      if (imageError || !image) {
+        return { message: imageError?.message ?? "Upload failed.", ok: false };
+      }
+
+      const { error: trackError } = await ctx.supabase
+        .from("tracks")
+        .update({ image_asset_id: image.id })
+        .eq("workspace_id", ctx.workspaceId)
+        .eq("id", input.trackId);
+
+      if (trackError) {
+        return { message: trackError.message, ok: false };
+      }
+
+      return { message: "Cover updated.", ok: true };
+    },
+    schema: z.object({ trackId: z.string().uuid() }),
+    values: (form) => ({ trackId: String(form.get("trackId") ?? "") }),
+  });
+}
+
 export async function updateTrackDetailsAction(
   formData: FormData,
 ): Promise<FeedActionResult> {

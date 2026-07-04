@@ -31,7 +31,7 @@ export function useFeedAction() {
 
   function run(
     action: FeedAction,
-    entries: Record<string, string>,
+    entries: Record<string, string | Blob>,
     options: FeedActionOptions = {},
   ) {
     const snapshot = options.optimistic

@@ -67,10 +67,19 @@ export type FeedUser = {
   initials: string;
 };
 
+export type FeedPublishDefaults = {
+  /** Default YouTube privacy from workspace settings. */
+  privacyStatus: "private" | "unlisted" | "public";
+  /** Templates with a {title} placeholder; null = use the track title/description. */
+  titleTemplate: string | null;
+  descriptionTemplate: string | null;
+};
+
 export type FeedData = {
   connections: FeedConnections;
   groups: FeedJobGroup[];
   hasActiveWork: boolean;
+  publishDefaults: FeedPublishDefaults;
   usage: FeedUsage;
   user: FeedUser;
 };

@@ -27,6 +27,7 @@ export type YoutubeOAuthTokens = {
 
 export type YoutubeUploadInput = {
   description?: string | null;
+  madeForKids?: boolean;
   privacyStatus: YoutubePrivacyStatus;
   publishAt?: string | null;
   tags?: string[] | null;

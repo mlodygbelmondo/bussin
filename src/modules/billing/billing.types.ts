@@ -68,4 +68,6 @@ export type WorkspaceSettingsData = {
   notifyMarketingEmails: boolean;
   notifyProductUpdates: boolean;
   timezone: string;
+  youtubeDescriptionTemplate: string | null;
+  youtubeTitleTemplate: string | null;
 };

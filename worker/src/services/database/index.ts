@@ -43,6 +43,7 @@ export type RenderContext = {
 export type YoutubeUploadContext = {
   title: string;
   description?: string | null;
+  madeForKids: boolean;
   encryptedAccessToken: string;
   encryptedRefreshToken: string;
   tags?: string[] | null;
@@ -290,7 +291,7 @@ export function createWorkerDatabaseService(
         client
           .from("youtube_uploads")
           .select(
-            "title, description, tags, privacy_status, video_render_id, youtube_channel_id, youtube_video_id",
+            "title, description, tags, privacy_status, made_for_kids, video_render_id, youtube_channel_id, youtube_video_id",
           )
           .eq("workspace_id", input.workspaceId)
           .eq("id", input.youtubeUploadId)
@@ -349,6 +350,7 @@ export function createWorkerDatabaseService(
         description: upload.description,
         encryptedAccessToken: connection.encrypted_access_token,
         encryptedRefreshToken: connection.encrypted_refresh_token,
+        madeForKids: upload.made_for_kids,
         privacyStatus: upload.privacy_status,
         tags: upload.tags,
         title: upload.title,

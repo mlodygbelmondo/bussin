@@ -46,6 +46,11 @@ function buildFeed(): FeedData {
       },
     ],
     hasActiveWork: false,
+    publishDefaults: {
+      descriptionTemplate: null,
+      privacyStatus: "private",
+      titleTemplate: null,
+    },
     usage: { limit: 10, plan: "trial", used: 1 },
     user: { displayName: "P", email: "p@example.com", initials: "P" },
   };

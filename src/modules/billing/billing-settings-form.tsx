@@ -132,6 +132,35 @@ export function BillingSettingsForm({ data }: BillingSettingsFormProps) {
             </Field>
           </div>
 
+          <div className="grid gap-4">
+            <Field
+              description="Prefills the publish dialog's title; {title} expands to the track title."
+              label="YouTube title template"
+            >
+              <input
+                className="h-10 min-w-0 rounded-lg border border-border bg-input px-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/35"
+                data-testid="settings-title-template"
+                defaultValue={settings.youtubeTitleTemplate ?? ""}
+                maxLength={100}
+                name="youtube_title_template"
+                placeholder="{title} — chill instrumental"
+              />
+            </Field>
+            <Field
+              description="Prefills the publish dialog's description; {title} expands to the track title."
+              label="YouTube description template"
+            >
+              <textarea
+                className="min-h-24 rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/35"
+                data-testid="settings-description-template"
+                defaultValue={settings.youtubeDescriptionTemplate ?? ""}
+                maxLength={5000}
+                name="youtube_description_template"
+                placeholder={"New track: {title}\n\nSubscribe for more…"}
+              />
+            </Field>
+          </div>
+
           {data.channels.length === 0 ? (
             <p
               className="rounded-lg border border-line bg-panel p-3 text-sm text-muted-foreground"

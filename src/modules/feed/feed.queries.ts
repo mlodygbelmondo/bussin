@@ -89,6 +89,7 @@ export async function getFeedData(userId: string): Promise<FeedData | null> {
     requestsResult,
     sunoResult,
     youtubeResult,
+    settingsResult,
     channelResult,
   ] = await Promise.all([
     supabase
@@ -129,6 +130,13 @@ export async function getFeedData(userId: string): Promise<FeedData | null> {
       .limit(1)
       .maybeSingle(),
     supabase
+      .from("workspace_settings")
+      .select(
+        "default_privacy_status, youtube_title_template, youtube_description_template",
+      )
+      .eq("workspace_id", workspaceId)
+      .maybeSingle(),
+    supabase
       .from("youtube_channels")
       .select("title")
       .eq("workspace_id", workspaceId)
@@ -146,6 +154,7 @@ export async function getFeedData(userId: string): Promise<FeedData | null> {
     requestsResult,
     sunoResult,
     youtubeResult,
+    settingsResult,
     channelResult,
   ]) {
     if (result.error) {
@@ -205,6 +214,12 @@ export async function getFeedData(userId: string): Promise<FeedData | null> {
     },
     groups,
     hasActiveWork: groups.some(isGroupActive),
+    publishDefaults: {
+      descriptionTemplate:
+        settingsResult.data?.youtube_description_template ?? null,
+      privacyStatus: settingsResult.data?.default_privacy_status ?? "private",
+      titleTemplate: settingsResult.data?.youtube_title_template ?? null,
+    },
     usage: {
       limit: getPlanLimits(plan).monthlyGenerationRequests,
       plan,

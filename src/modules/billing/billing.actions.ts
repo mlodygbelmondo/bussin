@@ -186,6 +186,10 @@ export async function updateWorkspaceSettingsAction(
     notify_marketing_emails: formData.get("notify_marketing_emails") === "on",
     notify_product_updates: formData.get("notify_product_updates") === "on",
     timezone: formData.get("timezone"),
+    youtube_description_template: emptyToNull(
+      formData.get("youtube_description_template"),
+    ),
+    youtube_title_template: emptyToNull(formData.get("youtube_title_template")),
   });
 
   if (!parsed.success) {

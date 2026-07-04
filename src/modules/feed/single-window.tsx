@@ -151,6 +151,7 @@ export function SingleWindow({
         {hasHistory ? (
           <FeedList
             channelTitle={feed.connections.channelTitle}
+            publishDefaults={feed.publishDefaults}
             groups={feed.groups}
           />
         ) : null}
