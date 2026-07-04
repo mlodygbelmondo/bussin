@@ -4,7 +4,19 @@
  * track-waveform.tsx.
  */
 
-export const WAVEFORM_BAR_COUNT = 40;
+export const WAVEFORM_BAR_COUNT = 96;
+
+/** Bars this close to the playhead pulse while audio is playing. */
+export const PLAYHEAD_PULSE_RADIUS = 3;
+
+/** Whether a bar sits close enough to the playhead to join the live pulse. */
+export function isNearPlayhead(
+  index: number,
+  progress: number,
+  barCount: number,
+): boolean {
+  return Math.abs(index + 0.5 - progress * barCount) < PLAYHEAD_PULSE_RADIUS;
+}
 
 /** Bars never collapse below this so the strip reads as a waveform, not dust. */
 const MIN_PEAK = 0.16;

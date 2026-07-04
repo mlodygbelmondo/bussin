@@ -131,7 +131,11 @@ export function TrackCard({
 
       {preview.active ? (
         <Reveal className="mt-3">
-          <PlaybackWaveform peaks={peaks} progress={preview.progress} />
+          <PlaybackWaveform
+            peaks={peaks}
+            playing={preview.playing}
+            progress={preview.progress}
+          />
         </Reveal>
       ) : null}
 

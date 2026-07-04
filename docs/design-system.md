@@ -26,21 +26,21 @@ primitive, variant, and state rendered on the real tokens.
    with a 1px `--line`/`--border` border. Elevation exists only for floating
    surfaces (dialogs, popovers, dropdowns) via `--shadow-elevated`, plus the
    hero prompt focus glow (`.prompt-card`).
-5. **Sound made visible, on two stages.** Every expressive visual derives
-   from one concept: audio made visual — waveforms, frequency bars, pulses
-   that follow what the product is actually doing. There are two
-   expressiveness tiers:
-   - **Stage** (the marketing home page and auth screens): loud. The
-     ambient trio (`<Aurora />`, `<Starfield />`, `.grain`), waveform-driven
-     hero motion, and choreographed set-piece animations are all welcome —
-     as long as they derive from the sound concept and stay performant.
-   - **Studio** (`/dashboard` and everything behind auth): alive but
-     restrained — always one notch calmer than the Stage. The ambient trio
-     may back the hero prompt; expressive motion is reactive, triggered by
-     real audio or status events (preview playback, generation progress,
-     track ready, publish), never idle decoration.
+5. **Sound made visible, everywhere the product performs.** Every
+   expressive visual derives from one concept: audio made visual —
+   waveforms, frequency bars, pulses that follow what the product is
+   actually doing. The ambient trio (`<Aurora />`, `<Starfield />`,
+   `.grain`) is the house atmosphere and runs on the home page, auth
+   screens, and `/dashboard` alike — the dashboard is a stage too, never a
+   flat black box. The home page may go further: waveform-driven hero
+   motion and choreographed set-piece animations are welcome as long as
+   they derive from the sound concept and stay performant. On the
+   dashboard, everything **beyond** the ambient trio stays reactive —
+   triggered by real audio or status events (preview playback, generation
+   progress, track ready, publish), not idle decoration. Utility pages
+   reached from the avatar menu (settings, billing, channels) stay plain.
 
-   On both stages: ambient effects never sit on buttons, cards, borders, or
+   Everywhere: ambient effects never sit on buttons, cards, borders, or
    text; the only gradients are the aurora (via `<Aurora />`) and the logo
    mark; decoration that derives from neither sound nor state stays banned.
 
@@ -143,10 +143,11 @@ Motion is part of the identity, not garnish. The library is `motion`
    8px rise, ~40–60ms apart, capped at ~320ms total — while the top bar
    stays put. No exit animations, no route-transition libraries, no
    `template.tsx` remounts.
-2. **Two tiers of motion.** The Stage (home, auth) may run continuous,
-   choreographed, waveform-derived animation. The Studio is reactive:
-   ambient lives behind the hero prompt, and everything else moves only in
-   response to user action or job progress — never idly. See principle 5.
+2. **Ambient everywhere, reactive on top.** The ambient trio runs
+   continuously on home, auth, and `/dashboard`. The home page may add
+   choreographed, waveform-derived set pieces; on the dashboard everything
+   beyond the ambient trio moves only in response to user action or job
+   progress — never idly. See principle 5.
 3. **Signature moments are budgeted.** The Studio gets at most four
    celebration/signature effects, each tied to a meaningful event: track
    flips to ready (`.track-ready-pop`), generation in progress, publish

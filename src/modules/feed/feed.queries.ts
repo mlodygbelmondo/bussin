@@ -158,9 +158,11 @@ export async function getFeedData(userId: string): Promise<FeedData | null> {
     await loadTrackContext(supabase, workspaceId, requests);
   const feedTracksById = new Map<string, FeedTrack[]>();
 
-  await Promise.all(
-    tracks.map(async (track) => {
-      const feedTrack = await buildFeedTrack({
+  // Resolve URLs in parallel, but group in query order — pushing as each
+  // promise settles made the feed order depend on signed-URL latency.
+  const feedTracks = await Promise.all(
+    tracks.map((track) =>
+      buildFeedTrack({
         image: track.image_asset_id
           ? (imagesByid.get(track.image_asset_id) ?? null)
           : null,
@@ -169,14 +171,17 @@ export async function getFeedData(userId: string): Promise<FeedData | null> {
         upload: uploadsByTrack.get(track.id) ?? null,
         userId,
         workspaceId,
-      });
-      const groupId = track.generation_request_id ?? "";
-      const existing = feedTracksById.get(groupId) ?? [];
-
-      existing.push(feedTrack);
-      feedTracksById.set(groupId, existing);
-    }),
+      }),
+    ),
   );
+
+  feedTracks.forEach((feedTrack, index) => {
+    const groupId = tracks[index].generation_request_id ?? "";
+    const existing = feedTracksById.get(groupId) ?? [];
+
+    existing.push(feedTrack);
+    feedTracksById.set(groupId, existing);
+  });
 
   const groups: FeedJobGroup[] = requests.map((request) => ({
     createdAt: request.created_at,

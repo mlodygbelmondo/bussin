@@ -79,11 +79,13 @@ TRANSITIONS map.
 (`--primary`) is the only accent; state colors (`--success`, `--warning`,
 `--danger`, `--info`) mark state, never decoration; flat surfaces with 1px
 borders; status display uses the `Badge` component variants. Expressive
-visuals follow the "sound made visible" concept on two tiers: the Stage
-(home, auth) is loud — the ambient trio (`<Aurora />`, `<Starfield />`,
-`.grain`) plus waveform-derived choreography; the Studio (`/dashboard`) is
-reactive and one notch calmer — motion responds to audio or job events,
-never idles, with a budget of at most four signature moments. The only
+visuals follow the "sound made visible" concept: the ambient trio
+(`<Aurora />`, `<Starfield />`, `.grain`) runs on home, auth, AND
+`/dashboard` — the dashboard is never a flat black box. Home may add
+waveform-derived choreography; on the dashboard everything beyond the
+ambient trio is reactive — motion responds to audio or job events, never
+idles, with a budget of at most four signature moments. Utility pages
+(settings, billing, channels) stay plain. The only
 gradients anywhere are the aurora and the logo mark. Motion: `motion/react`
 via the primitives in `src/components/common/motion.tsx`, transform/opacity
 only, reduced-motion respected, optimistic UI on feed mutations (see the

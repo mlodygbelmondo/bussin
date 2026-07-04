@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import {
   computeWaveformPeaks,
   fallbackWaveformPeaks,
+  isNearPlayhead,
 } from "@/modules/feed/waveform";
 
 /*
@@ -154,9 +155,11 @@ export function useWaveformPeaks(
  */
 export function PlaybackWaveform({
   peaks,
+  playing = false,
   progress,
 }: {
   peaks: number[] | null | undefined;
+  playing?: boolean;
   progress: number;
 }) {
   const bars = peaks ?? fallbackWaveformPeaks();
@@ -165,23 +168,31 @@ export function PlaybackWaveform({
   return (
     <div
       aria-hidden="true"
-      className="flex h-6 w-full items-center gap-0.5"
+      className="flex h-6 w-full items-center gap-px"
       data-testid="track-waveform"
     >
-      {bars.map((peak, index) => (
-        <span
-          className={cn(
-            "min-h-1 flex-1 rounded-full bg-primary transition-opacity duration-200",
-            isFallback && "eq-bar",
-          )}
-          key={index}
-          style={{
-            animationDelay: isFallback ? `${(index % 8) * 110}ms` : undefined,
-            height: `${Math.round(peak * 100)}%`,
-            opacity: progress * bars.length >= index + 0.5 ? 0.95 : 0.3,
-          }}
-        />
-      ))}
+      {bars.map((peak, index) => {
+        // Fallback bars pulse across the whole strip; real peaks pulse only
+        // around the playhead so the waveform never looks frozen mid-play.
+        const pulsing =
+          playing &&
+          (isFallback || isNearPlayhead(index, progress, bars.length));
+
+        return (
+          <span
+            className={cn(
+              "min-h-[3px] flex-1 rounded-full bg-primary transition-opacity duration-200",
+              pulsing && "eq-bar",
+            )}
+            key={index}
+            style={{
+              animationDelay: pulsing ? `${(index % 8) * 110}ms` : undefined,
+              height: `${Math.round(peak * 100)}%`,
+              opacity: progress * bars.length >= index + 0.5 ? 0.95 : 0.35,
+            }}
+          />
+        );
+      })}
     </div>
   );
 }

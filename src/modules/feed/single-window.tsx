@@ -94,15 +94,13 @@ export function SingleWindow({
       className="relative isolate flex min-h-[100dvh] flex-col"
       data-testid="screen-single-window"
     >
-      {hasHistory ? null : (
-        <div
-          aria-hidden="true"
-          className="grain pointer-events-none absolute inset-0 -z-10 overflow-hidden"
-        >
-          <Aurora />
-          <Starfield />
-        </div>
-      )}
+      <div
+        aria-hidden="true"
+        className="grain pointer-events-none fixed inset-0 -z-10 overflow-hidden"
+      >
+        <Aurora />
+        <Starfield />
+      </div>
       <TopBar
         accountMenuExtras={accountMenuExtras}
         usage={feed.usage}
