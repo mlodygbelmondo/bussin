@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { escalateToServiceRole } from "@/lib/supabase";
 
 export type WorkerQueueName =
   | "generation-jobs"
@@ -24,7 +24,7 @@ export async function enqueueWorkerQueueJob(input: {
   message: WorkerQueueMessage;
   queueName: WorkerQueueName;
 }) {
-  const { error } = await (createAdminClient() as WorkerQueueRpcClient).rpc(
+  const { error } = await (escalateToServiceRole() as WorkerQueueRpcClient).rpc(
     "worker_queue_send",
     {
       delay_seconds: input.delaySeconds ?? 0,

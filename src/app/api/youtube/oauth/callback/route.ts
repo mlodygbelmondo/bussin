@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { isMockMode } from "@/lib/app-config";
 import { env } from "@/lib/env";
 import { createYouTubeOAuthClient } from "@/lib/integrations/youtube";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 import {
   getSafeOAuthReturnPath,
   YOUTUBE_OAUTH_STATE_COOKIE,
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid OAuth state" }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -92,7 +92,7 @@ export async function GET(request: Request) {
 }
 
 function createRouteYoutubeRepository(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof createWorkspaceClient>>,
 ): YoutubeConnectionRepository {
   return {
     async createConnection(input) {

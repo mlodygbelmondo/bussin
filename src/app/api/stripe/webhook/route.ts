@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { isMockMode } from "@/lib/app-config";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { escalateToServiceRole } from "@/lib/supabase";
 import { env, requireEnv } from "@/lib/env";
 import { createStripe } from "@/lib/integrations/stripe";
 import { processStripeWebhookEvent } from "@/server/services/billing/subscription.service";
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   try {
     await processStripeWebhookEvent({
       event,
-      repository: createSubscriptionRepository(createAdminClient()),
+      repository: createSubscriptionRepository(escalateToServiceRole()),
     });
   } catch (error) {
     console.error("Stripe webhook processing failed.", {
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 }
 
 function createSubscriptionRepository(
-  supabase: ReturnType<typeof createAdminClient>,
+  supabase: ReturnType<typeof escalateToServiceRole>,
 ) {
   return {
     async createAuditLog(input: Record<string, unknown>) {

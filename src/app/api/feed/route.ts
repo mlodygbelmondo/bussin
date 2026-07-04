@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isMockMode, mockUser } from "@/lib/app-config";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 import { getFeedData } from "@/modules/feed/feed.queries";
 
 export async function GET() {
@@ -9,7 +9,7 @@ export async function GET() {
   if (isMockMode) {
     userId = mockUser.id;
   } else {
-    const supabase = await createClient();
+    const supabase = await createWorkspaceClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();

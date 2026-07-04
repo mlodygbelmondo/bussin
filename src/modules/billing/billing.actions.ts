@@ -6,7 +6,7 @@ import type { TablesInsert, TablesUpdate } from "@/lib/database.types";
 import { isMockMode } from "@/lib/app-config";
 import { env } from "@/lib/env";
 import { createStripe } from "@/lib/integrations/stripe";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 import { getStripePriceIdForPlan } from "@/modules/billing/plan-config";
 import { getOrCreateStripeCustomer } from "@/server/services/billing/stripe.service";
 import {
@@ -238,7 +238,7 @@ export async function updateWorkspaceSettingsAction(
 }
 
 async function requireUser() {
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -256,7 +256,7 @@ function emptyToNull(value: FormDataEntryValue | null) {
 
 async function validateWorkspaceReferences(input: {
   imageAssetId: string | null;
-  supabase: Awaited<ReturnType<typeof createClient>>;
+  supabase: Awaited<ReturnType<typeof createWorkspaceClient>>;
   workspaceId: string;
   youtubeChannelId: string | null;
 }): Promise<string | null> {
@@ -290,7 +290,7 @@ async function validateWorkspaceReferences(input: {
 }
 
 function createStripeCustomerRepository(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof createWorkspaceClient>>,
 ) {
   return {
     async createSubscription(input: TablesInsert<"subscriptions">) {

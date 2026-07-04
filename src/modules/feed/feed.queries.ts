@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isMockMode } from "@/lib/app-config";
 import type { Database } from "@/lib/database.types";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 import { mockFeedData } from "@/modules/dev/mock-data";
 import { getPlanLimits } from "@/server/services/plan-limits.service";
 import { isGenerationRequestStatus } from "@/server/services/status-transition.service";
@@ -65,7 +65,7 @@ export async function getFeedData(userId: string): Promise<FeedData | null> {
     return mockFeedData;
   }
 
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const { data: membership, error: membershipError } = await supabase
     .from("workspace_members")
     .select("workspace_id")

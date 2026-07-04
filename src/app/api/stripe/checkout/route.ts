@@ -3,7 +3,7 @@ import { isMockMode } from "@/lib/app-config";
 import { env } from "@/lib/env";
 import { createStripe } from "@/lib/integrations/stripe";
 import type { TablesInsert, TablesUpdate } from "@/lib/database.types";
-import { createClient } from "@/lib/supabase/server";
+import { createWorkspaceClient } from "@/lib/supabase";
 import { getStripePriceIdForPlan } from "@/modules/billing/plan-config";
 import { getOrCreateStripeCustomer } from "@/server/services/billing/stripe.service";
 import { billingCheckoutSchema } from "@/server/validators/billing.validator";
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     });
   }
 
-  const supabase = await createClient();
+  const supabase = await createWorkspaceClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
 }
 
 function createStripeCustomerRepository(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof createWorkspaceClient>>,
 ) {
   return {
     async createSubscription(input: TablesInsert<"subscriptions">) {
