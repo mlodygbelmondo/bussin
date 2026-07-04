@@ -36,8 +36,11 @@ Domain glossary (use these words, in code and in conversation):
 - `publish.actions.ts` — approve / reject / publish now / schedule a track.
 - `schedule.actions.ts` — reschedule / cancel / publish-early for scheduled uploads.
 - `jobs.actions.ts` — retry and cancel for failed/running jobs.
+- `feed-action.ts` — `runFeedAction()`, the single seam every server action
+  goes through: mock-mode short-circuit, `requireWorkspace()`, Zod parse,
+  error → result mapping, dashboard revalidation.
 - `workspace-context.ts` — `requireWorkspace()`, the auth+workspace guard
-  every action calls first.
+  every action calls first (via `runFeedAction`).
 - `single-window.tsx` — the screen: hero prompt, connect gate, polling.
 - `feed-cards.tsx` — job-group card; `track-card.tsx` — track row with
   dialogs and audio preview.

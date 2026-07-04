@@ -1,13 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { isMockMode } from "@/lib/app-config";
-import { requireWorkspace } from "@/modules/feed/workspace-context";
-import { createGenerationRepository } from "@/server/services/generation.repository";
+import { runFeedAction } from "@/modules/feed/feed-action";
 import type { FeedActionResult } from "@/modules/feed/feed.types";
+import { createGenerationRepository } from "@/server/services/generation.repository";
 import { createGenerationRequestService } from "@/server/services/generation-request.service";
-import { ServiceError } from "@/server/services/service-error";
 import { enqueueWorkerQueueJob } from "@/server/services/worker-queue.service";
 import { createGenerationRequestSchema } from "@/server/validators/generation.validator";
 
@@ -27,122 +24,100 @@ const trackDetailsSchema = z.object({
 export async function createFeedGenerationAction(
   formData: FormData,
 ): Promise<FeedActionResult> {
-  if (isMockMode) {
-    return { message: "Mock generation queued.", ok: true };
-  }
+  return runFeedAction({
+    errorFallback: "Could not start the generation.",
+    formData,
+    invalidMessage: "Describe the track first.",
+    mockMessage: "Mock generation queued.",
+    async run({ ctx, input }) {
+      const parsed = createGenerationRequestSchema.safeParse({
+        duration_seconds: input.duration_seconds,
+        publish_mode: "draft",
+        style: input.prompt,
+        track_count: input.track_count,
+      });
 
-  const parsedPrompt = promptSchema.safeParse({
-    duration_seconds: Number(formData.get("duration_seconds")),
-    prompt: String(formData.get("prompt") ?? ""),
-    track_count: Number(formData.get("track_count")),
-  });
+      if (!parsed.success) {
+        return {
+          message:
+            parsed.error.issues[0]?.message ??
+            "Could not start the generation.",
+          ok: false,
+        };
+      }
 
-  if (!parsedPrompt.success) {
-    return {
-      message:
-        parsedPrompt.error.issues[0]?.message ?? "Describe the track first.",
-      ok: false,
-    };
-  }
-
-  const { supabase, user, workspaceId } = await requireWorkspace();
-  const parsed = createGenerationRequestSchema.safeParse({
-    duration_seconds: parsedPrompt.data.duration_seconds,
-    publish_mode: "draft",
-    style: parsedPrompt.data.prompt,
-    track_count: parsedPrompt.data.track_count,
-  });
-
-  if (!parsed.success) {
-    return {
-      message:
-        parsed.error.issues[0]?.message ?? "Could not start the generation.",
-      ok: false,
-    };
-  }
-
-  try {
-    const service = createGenerationRequestService({
-      queue: {
-        async enqueueGenerationJob(input) {
-          await enqueueWorkerQueueJob({
-            message: input,
-            queueName: "generation-jobs",
-          });
+      const service = createGenerationRequestService({
+        queue: {
+          async enqueueGenerationJob(queueInput) {
+            await enqueueWorkerQueueJob({
+              message: queueInput,
+              queueName: "generation-jobs",
+            });
+          },
         },
-      },
-      repository: createGenerationRepository(supabase),
-    });
+        repository: createGenerationRepository(ctx.supabase),
+      });
 
-    await service.create({
-      createdByUserId: user.id,
-      input: parsed.data,
-      workspaceId,
-    });
-  } catch (error) {
-    return {
-      message:
-        error instanceof ServiceError || error instanceof Error
-          ? error.message
-          : "Could not start the generation.",
-      ok: false,
-    };
-  }
+      await service.create({
+        createdByUserId: ctx.user.id,
+        input: parsed.data,
+        workspaceId: ctx.workspaceId,
+      });
 
-  revalidatePath("/dashboard");
-
-  return { message: "Generation started.", ok: true };
+      return { message: "Generation started.", ok: true };
+    },
+    schema: promptSchema,
+    values: (form) => ({
+      duration_seconds: Number(form.get("duration_seconds")),
+      prompt: String(form.get("prompt") ?? ""),
+      track_count: Number(form.get("track_count")),
+    }),
+  });
 }
 
 export async function updateTrackDetailsAction(
   formData: FormData,
 ): Promise<FeedActionResult> {
-  if (isMockMode) {
-    return { message: "Mock track details saved.", ok: true };
-  }
+  return runFeedAction({
+    errorFallback: "Could not save track details.",
+    formData,
+    invalidMessage: "Invalid track details.",
+    mockMessage: "Mock track details saved.",
+    async run({ ctx, input }) {
+      const { description, tags, title, trackId } = input;
+      const { error } = await ctx.supabase
+        .from("tracks")
+        .update({ description, tags, title })
+        .eq("workspace_id", ctx.workspaceId)
+        .eq("id", trackId)
+        .not("status", "in", "(uploaded)");
 
-  const parsed = trackDetailsSchema.safeParse({
-    description: String(formData.get("description") ?? ""),
-    tags: String(formData.get("tags") ?? "")
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean),
-    title: String(formData.get("title") ?? ""),
-    trackId: String(formData.get("trackId") ?? ""),
+      if (error) {
+        return { message: error.message, ok: false };
+      }
+
+      const { error: uploadError } = await ctx.supabase
+        .from("youtube_uploads")
+        .update({ description, tags, title })
+        .eq("workspace_id", ctx.workspaceId)
+        .eq("track_id", trackId)
+        .in("status", ["draft", "scheduled"]);
+
+      if (uploadError) {
+        return { message: uploadError.message, ok: false };
+      }
+
+      return { message: "Track details saved.", ok: true };
+    },
+    schema: trackDetailsSchema,
+    values: (form) => ({
+      description: String(form.get("description") ?? ""),
+      tags: String(form.get("tags") ?? "")
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+      title: String(form.get("title") ?? ""),
+      trackId: String(form.get("trackId") ?? ""),
+    }),
   });
-
-  if (!parsed.success) {
-    return {
-      message: parsed.error.issues[0]?.message ?? "Invalid track details.",
-      ok: false,
-    };
-  }
-
-  const { supabase, workspaceId } = await requireWorkspace();
-  const { description, tags, title, trackId } = parsed.data;
-  const { error } = await supabase
-    .from("tracks")
-    .update({ description, tags, title })
-    .eq("workspace_id", workspaceId)
-    .eq("id", trackId)
-    .not("status", "in", "(uploaded)");
-
-  if (error) {
-    return { message: error.message, ok: false };
-  }
-
-  const { error: uploadError } = await supabase
-    .from("youtube_uploads")
-    .update({ description, tags, title })
-    .eq("workspace_id", workspaceId)
-    .eq("track_id", trackId)
-    .in("status", ["draft", "scheduled"]);
-
-  if (uploadError) {
-    return { message: uploadError.message, ok: false };
-  }
-
-  revalidatePath("/dashboard");
-
-  return { message: "Track details saved.", ok: true };
 }

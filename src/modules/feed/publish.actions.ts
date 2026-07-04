@@ -1,10 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
 import type { Database, Json, TablesInsert } from "@/lib/database.types";
-import { isMockMode } from "@/lib/app-config";
-import { requireWorkspace } from "@/modules/feed/workspace-context";
+import { runFeedAction } from "@/modules/feed/feed-action";
 import { effectiveBillingPlan } from "@/server/services/plan-limits.service";
 import {
   createTrackService,
@@ -26,210 +25,224 @@ type ExistingYoutubeUpload = Pick<
   "id" | "status"
 >;
 
+const trackIdSchema = z.object({
+  trackId: z.string().min(1, "Missing track id."),
+});
+
+const scheduleSchema = trackIdSchema.extend({
+  scheduled_at: z.string(),
+});
+
+const readTrackIdValues = (form: FormData) => ({
+  trackId: String(form.get("trackId") ?? ""),
+});
+
 export async function approveTrackAction(
   formData: FormData,
 ): Promise<FeedActionResult> {
-  if (isMockMode) {
-    return { message: "Mock track approved. Render queued.", ok: true };
-  }
+  return runFeedAction({
+    errorFallback: "Could not approve this track.",
+    formData,
+    mockMessage: "Mock track approved. Render queued.",
+    async run({ ctx, input }) {
+      const { supabase, userId, workspaceId } = ctx;
+      const { trackId } = input;
+      const service = createTrackService({
+        repository: createTrackRepository(supabase),
+      });
+      const result = await service.approveTrack({
+        trackId,
+        userId,
+        workspaceId,
+      });
+      const videoRenderId = result.render.id;
 
-  const trackId = readTrackId(formData);
-  const { supabase, userId, workspaceId } = await requireWorkspace();
+      if (!videoRenderId) {
+        throw new Error("Approval did not create a render job.");
+      }
 
-  try {
-    const service = createTrackService({
-      repository: createTrackRepository(supabase),
-    });
-    const result = await service.approveTrack({ trackId, userId, workspaceId });
-    const videoRenderId = result.render.id;
+      await enqueueRender(supabase, { trackId, videoRenderId, workspaceId });
 
-    if (!videoRenderId) {
-      throw new Error("Approval did not create a render job.");
-    }
-
-    await enqueueRender(supabase, { trackId, videoRenderId, workspaceId });
-  } catch (error) {
-    return actionError(error, "Could not approve this track.");
-  }
-
-  revalidateTrack();
-
-  return { message: "Track approved. Render queued.", ok: true };
+      return { message: "Track approved. Render queued.", ok: true };
+    },
+    schema: trackIdSchema,
+    values: readTrackIdValues,
+  });
 }
 
 export async function rejectTrackAction(
   formData: FormData,
 ): Promise<FeedActionResult> {
-  if (isMockMode) {
-    return { message: "Mock track rejected.", ok: true };
-  }
+  return runFeedAction({
+    errorFallback: "Could not reject this track.",
+    formData,
+    mockMessage: "Mock track rejected.",
+    async run({ ctx, input }) {
+      const service = createTrackService({
+        repository: createTrackRepository(ctx.supabase),
+      });
 
-  const trackId = readTrackId(formData);
-  const { supabase, userId, workspaceId } = await requireWorkspace();
+      await service.rejectTrack({
+        trackId: input.trackId,
+        userId: ctx.userId,
+        workspaceId: ctx.workspaceId,
+      });
 
-  try {
-    const service = createTrackService({
-      repository: createTrackRepository(supabase),
-    });
-
-    await service.rejectTrack({ trackId, userId, workspaceId });
-  } catch (error) {
-    return actionError(error, "Could not reject this track.");
-  }
-
-  revalidateTrack();
-
-  return { message: "Track rejected. Uploads are blocked.", ok: true };
+      return { message: "Track rejected. Uploads are blocked.", ok: true };
+    },
+    schema: trackIdSchema,
+    values: readTrackIdValues,
+  });
 }
 
 export async function publishTrackNowAction(
   formData: FormData,
 ): Promise<FeedActionResult> {
-  if (isMockMode) {
-    return { message: "Mock publishing job queued.", ok: true };
-  }
-
-  const trackId = readTrackId(formData);
-  const { supabase, userId, workspaceId } = await requireWorkspace();
-
-  try {
-    const context = await ensureRenderContext({
-      supabase,
-      trackId,
-      userId,
-      workspaceId,
-    });
-
-    if (!context.renderReady && !context.shouldEnqueueRender) {
-      return {
-        message:
-          "This track is already rendering. Publish after the render finishes.",
-        ok: false,
-      };
-    }
-
-    const upload = await createOrReuseYoutubeUpload({
-      ensureCanCreate: () =>
-        assertUploadWithinPlanLimits(supabase, workspaceId, "publish_now"),
-      scheduledAt: null,
-      status: "draft",
-      supabase,
-      trackId,
-      videoRenderId: context.videoRenderId,
-      workspaceId,
-    });
-
-    if (upload.created) {
-      await createAuditLog(supabase, {
-        action: "upload.scheduled",
-        entity_id: upload.id,
-        entity_type: "youtube_upload",
-        metadata: { mode: "publish_now" },
-        user_id: userId,
-        workspace_id: workspaceId,
-      });
-    }
-
-    if (context.renderReady && upload.status === "draft") {
-      await enqueueYoutubeUpload(supabase, {
+  return runFeedAction({
+    errorFallback: "Could not queue publishing.",
+    formData,
+    mockMessage: "Mock publishing job queued.",
+    async run({ ctx, input }) {
+      const { supabase, userId, workspaceId } = ctx;
+      const { trackId } = input;
+      const context = await ensureRenderContext({
+        supabase,
         trackId,
-        videoRenderId: context.videoRenderId,
+        userId,
         workspaceId,
-        youtubeUploadId: upload.id,
       });
-    } else if (context.shouldEnqueueRender && upload.status === "draft") {
-      await enqueueRender(supabase, {
+
+      if (!context.renderReady && !context.shouldEnqueueRender) {
+        return {
+          message:
+            "This track is already rendering. Publish after the render finishes.",
+          ok: false,
+        };
+      }
+
+      const upload = await createOrReuseYoutubeUpload({
+        ensureCanCreate: () =>
+          assertUploadWithinPlanLimits(supabase, workspaceId, "publish_now"),
+        scheduledAt: null,
+        status: "draft",
+        supabase,
         trackId,
         videoRenderId: context.videoRenderId,
         workspaceId,
       });
-    }
-  } catch (error) {
-    return actionError(error, "Could not queue publishing.");
-  }
 
-  revalidateTrack();
+      if (upload.created) {
+        await createAuditLog(supabase, {
+          action: "upload.scheduled",
+          entity_id: upload.id,
+          entity_type: "youtube_upload",
+          metadata: { mode: "publish_now" },
+          user_id: userId,
+          workspace_id: workspaceId,
+        });
+      }
 
-  return { message: "Publishing job queued.", ok: true };
+      if (context.renderReady && upload.status === "draft") {
+        await enqueueYoutubeUpload(supabase, {
+          trackId,
+          videoRenderId: context.videoRenderId,
+          workspaceId,
+          youtubeUploadId: upload.id,
+        });
+      } else if (context.shouldEnqueueRender && upload.status === "draft") {
+        await enqueueRender(supabase, {
+          trackId,
+          videoRenderId: context.videoRenderId,
+          workspaceId,
+        });
+      }
+
+      return { message: "Publishing job queued.", ok: true };
+    },
+    schema: trackIdSchema,
+    values: readTrackIdValues,
+  });
 }
 
 export async function scheduleTrackAction(
   formData: FormData,
 ): Promise<FeedActionResult> {
-  if (isMockMode) {
-    return { message: "Mock upload scheduled.", ok: true };
-  }
+  return runFeedAction({
+    errorFallback: "Could not schedule this track.",
+    formData,
+    mockMessage: "Mock upload scheduled.",
+    async run({ ctx, input }) {
+      const { supabase, userId, workspaceId } = ctx;
+      const { trackId } = input;
+      const scheduledAt = normalizeSchedule(input.scheduled_at);
 
-  const trackId = readTrackId(formData);
-  const scheduledAt = normalizeSchedule(formData.get("scheduled_at"));
-  const { supabase, userId, workspaceId } = await requireWorkspace();
+      if (!scheduledAt) {
+        return { message: "Choose a future schedule time.", ok: false };
+      }
 
-  if (!scheduledAt) {
-    return { message: "Choose a future schedule time.", ok: false };
-  }
+      const context = await ensureRenderContext({
+        supabase,
+        trackId,
+        userId,
+        workspaceId,
+      });
 
-  try {
-    const context = await ensureRenderContext({
-      supabase,
-      trackId,
-      userId,
-      workspaceId,
-    });
+      if (context.shouldEnqueueRender) {
+        await enqueueRender(supabase, {
+          trackId,
+          videoRenderId: context.videoRenderId,
+          workspaceId,
+        });
+      }
 
-    if (context.shouldEnqueueRender) {
-      await enqueueRender(supabase, {
+      const upload = await createOrReuseYoutubeUpload({
+        ensureCanCreate: () =>
+          assertUploadWithinPlanLimits(supabase, workspaceId, "schedule"),
+        scheduledAt,
+        status: "scheduled",
+        supabase,
         trackId,
         videoRenderId: context.videoRenderId,
         workspaceId,
       });
-    }
 
-    const upload = await createOrReuseYoutubeUpload({
-      ensureCanCreate: () =>
-        assertUploadWithinPlanLimits(supabase, workspaceId, "schedule"),
-      scheduledAt,
-      status: "scheduled",
-      supabase,
-      trackId,
-      videoRenderId: context.videoRenderId,
-      workspaceId,
-    });
+      if (!upload.created) {
+        if (upload.status !== "scheduled") {
+          return {
+            message: "This track is already publishing.",
+            ok: false,
+          };
+        }
 
-    if (!upload.created) {
-      if (upload.status !== "scheduled") {
-        return {
-          message: "This track is already publishing.",
-          ok: false,
-        };
+        const { error } = await supabase
+          .from("youtube_uploads")
+          .update({ scheduled_at: scheduledAt })
+          .eq("workspace_id", workspaceId)
+          .eq("id", upload.id)
+          .eq("status", "scheduled");
+
+        if (error) {
+          throw new Error(error.message);
+        }
       }
 
-      const { error } = await supabase
-        .from("youtube_uploads")
-        .update({ scheduled_at: scheduledAt })
-        .eq("workspace_id", workspaceId)
-        .eq("id", upload.id)
-        .eq("status", "scheduled");
+      await createAuditLog(supabase, {
+        action: "upload.scheduled",
+        entity_id: upload.id,
+        entity_type: "youtube_upload",
+        metadata: { scheduled_at: scheduledAt },
+        user_id: userId,
+        workspace_id: workspaceId,
+      });
 
-      if (error) {
-        throw new Error(error.message);
-      }
-    }
-
-    await createAuditLog(supabase, {
-      action: "upload.scheduled",
-      entity_id: upload.id,
-      entity_type: "youtube_upload",
-      metadata: { scheduled_at: scheduledAt },
-      user_id: userId,
-      workspace_id: workspaceId,
-    });
-  } catch (error) {
-    return actionError(error, "Could not schedule this track.");
-  }
-
-  revalidateTrack();
-
-  return { message: "Upload scheduled.", ok: true };
+      return { message: "Upload scheduled.", ok: true };
+    },
+    schema: scheduleSchema,
+    values: (form) => ({
+      ...readTrackIdValues(form),
+      scheduled_at: String(form.get("scheduled_at") ?? ""),
+    }),
+  });
 }
 
 async function ensureRenderContext(input: {
@@ -592,8 +605,8 @@ async function createAuditLog(
   return data;
 }
 
-function normalizeSchedule(value: FormDataEntryValue | null) {
-  if (typeof value !== "string" || !value) {
+function normalizeSchedule(value: string) {
+  if (!value) {
     return null;
   }
 
@@ -604,25 +617,4 @@ function normalizeSchedule(value: FormDataEntryValue | null) {
   }
 
   return date.toISOString();
-}
-
-function readTrackId(formData: FormData) {
-  const trackId = String(formData.get("trackId") ?? "");
-
-  if (!trackId) {
-    throw new Error("Missing track id.");
-  }
-
-  return trackId;
-}
-
-function revalidateTrack() {
-  revalidatePath("/dashboard");
-}
-
-function actionError(error: unknown, fallback: string): FeedActionResult {
-  return {
-    message: error instanceof Error ? error.message : fallback,
-    ok: false,
-  };
 }

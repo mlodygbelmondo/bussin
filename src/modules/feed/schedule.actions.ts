@@ -1,9 +1,8 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { isMockMode } from "@/lib/app-config";
-import { requireWorkspace } from "@/modules/feed/workspace-context";
+import { z } from "zod";
+import { runFeedAction } from "@/modules/feed/feed-action";
 import type { FeedActionResult } from "@/modules/feed/feed.types";
 import type { Database } from "@/lib/database.types";
 import { enqueueWorkerQueueJob } from "@/server/services/worker-queue.service";
@@ -39,96 +38,77 @@ type QueueRpcClient = Supabase & {
   }>;
 };
 
+const uploadIdSchema = z.object({
+  uploadId: z.string(),
+});
+
+const rescheduleSchema = uploadIdSchema.extend({
+  scheduled_at: z.string(),
+});
+
+const readUploadIdValues = (form: FormData) => ({
+  uploadId: String(form.get("uploadId") ?? ""),
+});
+
 export async function rescheduleUploadAction(
   formData: FormData,
 ): Promise<FeedActionResult> {
-  if (isMockMode) {
-    return { message: "Mock upload rescheduled.", ok: true };
-  }
-
-  const { repository, userId, workspaceId } = await requireScheduledContext();
-
-  try {
-    const result = await rescheduleUpload({
-      repository,
-      scheduledAt: normalizeFutureSchedule(formData.get("scheduled_at")),
-      uploadId: readUploadId(formData),
-      userId,
-      workspaceId,
-    });
-
-    if (result.ok) {
-      revalidateScheduled();
-    }
-
-    return result;
-  } catch (error) {
-    return actionError(error, "Could not reschedule this upload.");
-  }
+  return runFeedAction({
+    errorFallback: "Could not reschedule this upload.",
+    formData,
+    mockMessage: "Mock upload rescheduled.",
+    run: ({ ctx, input }) =>
+      rescheduleUpload({
+        repository: createScheduledRepository(ctx.supabase),
+        scheduledAt: normalizeFutureSchedule(input.scheduled_at),
+        uploadId: input.uploadId,
+        userId: ctx.userId,
+        workspaceId: ctx.workspaceId,
+      }),
+    schema: rescheduleSchema,
+    values: (form) => ({
+      ...readUploadIdValues(form),
+      scheduled_at: String(form.get("scheduled_at") ?? ""),
+    }),
+  });
 }
 
 export async function cancelScheduledUploadAction(
   formData: FormData,
 ): Promise<FeedActionResult> {
-  if (isMockMode) {
-    return { message: "Mock upload canceled.", ok: true };
-  }
-
-  const { repository, userId, workspaceId } = await requireScheduledContext();
-
-  try {
-    const result = await cancelScheduledUpload({
-      repository,
-      uploadId: readUploadId(formData),
-      userId,
-      workspaceId,
-    });
-
-    if (result.ok) {
-      revalidateScheduled();
-    }
-
-    return result;
-  } catch (error) {
-    return actionError(error, "Could not cancel this upload.");
-  }
+  return runFeedAction({
+    errorFallback: "Could not cancel this upload.",
+    formData,
+    mockMessage: "Mock upload canceled.",
+    run: ({ ctx, input }) =>
+      cancelScheduledUpload({
+        repository: createScheduledRepository(ctx.supabase),
+        uploadId: input.uploadId,
+        userId: ctx.userId,
+        workspaceId: ctx.workspaceId,
+      }),
+    schema: uploadIdSchema,
+    values: readUploadIdValues,
+  });
 }
 
 export async function publishScheduledUploadNowAction(
   formData: FormData,
 ): Promise<FeedActionResult> {
-  if (isMockMode) {
-    return { message: "Mock upload queued for publishing.", ok: true };
-  }
-
-  const { repository, userId, workspaceId } = await requireScheduledContext();
-
-  try {
-    const result = await publishScheduledUploadNow({
-      repository,
-      uploadId: readUploadId(formData),
-      userId,
-      workspaceId,
-    });
-
-    if (result.ok) {
-      revalidateScheduled();
-    }
-
-    return result;
-  } catch (error) {
-    return actionError(error, "Could not publish this upload.");
-  }
-}
-
-async function requireScheduledContext() {
-  const { supabase, userId, workspaceId } = await requireWorkspace();
-
-  return {
-    repository: createScheduledRepository(supabase),
-    userId,
-    workspaceId,
-  };
+  return runFeedAction({
+    errorFallback: "Could not publish this upload.",
+    formData,
+    mockMessage: "Mock upload queued for publishing.",
+    run: ({ ctx, input }) =>
+      publishScheduledUploadNow({
+        repository: createScheduledRepository(ctx.supabase),
+        uploadId: input.uploadId,
+        userId: ctx.userId,
+        workspaceId: ctx.workspaceId,
+      }),
+    schema: uploadIdSchema,
+    values: readUploadIdValues,
+  });
 }
 
 function createScheduledRepository(
@@ -203,20 +183,5 @@ function createScheduledRepository(
 
       return data;
     },
-  };
-}
-
-function readUploadId(formData: FormData) {
-  return String(formData.get("uploadId") ?? "");
-}
-
-function revalidateScheduled() {
-  revalidatePath("/dashboard");
-}
-
-function actionError(error: unknown, fallback: string): FeedActionResult {
-  return {
-    message: error instanceof Error ? error.message : fallback,
-    ok: false,
   };
 }

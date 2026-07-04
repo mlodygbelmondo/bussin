@@ -1,10 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
 import type { Database } from "@/lib/database.types";
-import { isMockMode } from "@/lib/app-config";
-import { requireWorkspace } from "@/modules/feed/workspace-context";
+import { runFeedAction } from "@/modules/feed/feed-action";
 import type { FeedActionResult } from "@/modules/feed/feed.types";
 import { enqueueWorkerQueueJob } from "@/server/services/worker-queue.service";
 
@@ -19,146 +18,136 @@ type Target = (typeof TARGETS)[number];
 type QueueName = "generation-jobs" | "render-jobs" | "youtube-upload-jobs";
 type Supabase = SupabaseClient<Database>;
 
+const retryTargetSchema = z.object({
+  id: z.string().min(1, "Invalid queue action target."),
+  type: z.enum(TARGETS, { error: "Invalid queue action target." }),
+});
+
+const cancelRequestSchema = z.object({
+  id: z.string().min(1, "Missing request id."),
+});
+
 export async function retryFailedQueueItem(
   formData: FormData,
 ): Promise<FeedActionResult> {
-  if (isMockMode) {
-    return { message: "Mock retry queued.", ok: true };
-  }
+  return runFeedAction({
+    errorFallback: "Could not retry this job.",
+    formData,
+    mockMessage: "Mock retry queued.",
+    async run({ ctx, input: target }) {
+      const { supabase, userId, workspaceId } = ctx;
 
-  const target = parseTarget(formData);
-  const { supabase, userId, workspaceId } = await requireWorkspace();
+      await retryTarget({ supabase, target, workspaceId });
 
-  try {
-    await retryTarget({ supabase, target, workspaceId });
-  } catch (error) {
-    return {
-      message:
-        error instanceof Error ? error.message : "Could not retry this job.",
-      ok: false,
-    };
-  }
+      await supabase.from("audit_logs").insert({
+        action: "queue.retry_requested",
+        entity_id: target.id,
+        entity_type: target.type,
+        metadata: {},
+        user_id: userId,
+        workspace_id: workspaceId,
+      });
 
-  await supabase.from("audit_logs").insert({
-    action: "queue.retry_requested",
-    entity_id: target.id,
-    entity_type: target.type,
-    metadata: {},
-    user_id: userId,
-    workspace_id: workspaceId,
+      return { message: "Retry queued.", ok: true };
+    },
+    schema: retryTargetSchema,
+    values: (form) => ({
+      id: String(form.get("id") ?? ""),
+      type: String(form.get("type") ?? ""),
+    }),
   });
-
-  revalidatePath("/dashboard");
-
-  return { message: "Retry queued.", ok: true };
 }
 
 export async function cancelQueueRequest(
   formData: FormData,
 ): Promise<FeedActionResult> {
-  if (isMockMode) {
-    return { message: "Mock queue request canceled.", ok: true };
-  }
+  return runFeedAction({
+    errorFallback: "Could not cancel this request.",
+    formData,
+    mockMessage: "Mock queue request canceled.",
+    async run({ ctx, input }) {
+      const { supabase, userId, workspaceId } = ctx;
+      const { id } = input;
+      const { data: tracks, error: tracksError } = await supabase
+        .from("tracks")
+        .select("id")
+        .eq("workspace_id", workspaceId)
+        .eq("generation_request_id", id);
 
-  const id = String(formData.get("id") ?? "");
+      if (tracksError) {
+        return { message: tracksError.message, ok: false };
+      }
 
-  if (!id) {
-    return { message: "Missing request id.", ok: false };
-  }
+      const trackIds = (tracks ?? []).map((track) => track.id);
+      const { error } = await supabase
+        .from("generation_requests")
+        .update({ status: "cancelled" })
+        .eq("id", id)
+        .eq("workspace_id", workspaceId)
+        .in("status", ["queued", "running"]);
 
-  const { supabase, userId, workspaceId } = await requireWorkspace();
-  const { data: tracks, error: tracksError } = await supabase
-    .from("tracks")
-    .select("id")
-    .eq("workspace_id", workspaceId)
-    .eq("generation_request_id", id);
+      if (error) {
+        return { message: error.message, ok: false };
+      }
 
-  if (tracksError) {
-    return { message: tracksError.message, ok: false };
-  }
+      if (trackIds.length > 0) {
+        const { error: trackError } = await supabase
+          .from("tracks")
+          .update({
+            failure_reason: "Generation request cancelled.",
+            status: "failed",
+          })
+          .eq("workspace_id", workspaceId)
+          .in("id", trackIds)
+          .in("status", ["draft", "generating", "polling"]);
 
-  const trackIds = (tracks ?? []).map((track) => track.id);
-  const { error } = await supabase
-    .from("generation_requests")
-    .update({ status: "cancelled" })
-    .eq("id", id)
-    .eq("workspace_id", workspaceId)
-    .in("status", ["queued", "running"]);
+        if (trackError) {
+          return { message: trackError.message, ok: false };
+        }
 
-  if (error) {
-    return { message: error.message, ok: false };
-  }
+        const { error: renderError } = await supabase
+          .from("video_renders")
+          .update({
+            failure_reason: "Generation request cancelled.",
+            status: "failed",
+          })
+          .eq("workspace_id", workspaceId)
+          .in("track_id", trackIds)
+          .in("status", ["queued", "running"]);
 
-  if (trackIds.length > 0) {
-    const { error: trackError } = await supabase
-      .from("tracks")
-      .update({
-        failure_reason: "Generation request cancelled.",
-        status: "failed",
-      })
-      .eq("workspace_id", workspaceId)
-      .in("id", trackIds)
-      .in("status", ["draft", "generating", "polling"]);
+        if (renderError) {
+          return { message: renderError.message, ok: false };
+        }
 
-    if (trackError) {
-      return { message: trackError.message, ok: false };
-    }
+        const { error: uploadError } = await supabase
+          .from("youtube_uploads")
+          .update({
+            failure_reason: "Generation request cancelled.",
+            status: "cancelled",
+          })
+          .eq("workspace_id", workspaceId)
+          .in("track_id", trackIds)
+          .in("status", ["draft", "scheduled", "uploading"]);
 
-    const { error: renderError } = await supabase
-      .from("video_renders")
-      .update({
-        failure_reason: "Generation request cancelled.",
-        status: "failed",
-      })
-      .eq("workspace_id", workspaceId)
-      .in("track_id", trackIds)
-      .in("status", ["queued", "running"]);
+        if (uploadError) {
+          return { message: uploadError.message, ok: false };
+        }
+      }
 
-    if (renderError) {
-      return { message: renderError.message, ok: false };
-    }
+      await supabase.from("audit_logs").insert({
+        action: "queue.cancel_requested",
+        entity_id: id,
+        entity_type: "generation_request",
+        metadata: {},
+        user_id: userId,
+        workspace_id: workspaceId,
+      });
 
-    const { error: uploadError } = await supabase
-      .from("youtube_uploads")
-      .update({
-        failure_reason: "Generation request cancelled.",
-        status: "cancelled",
-      })
-      .eq("workspace_id", workspaceId)
-      .in("track_id", trackIds)
-      .in("status", ["draft", "scheduled", "uploading"]);
-
-    if (uploadError) {
-      return { message: uploadError.message, ok: false };
-    }
-  }
-
-  await supabase.from("audit_logs").insert({
-    action: "queue.cancel_requested",
-    entity_id: id,
-    entity_type: "generation_request",
-    metadata: {},
-    user_id: userId,
-    workspace_id: workspaceId,
+      return { message: "Request cancelled.", ok: true };
+    },
+    schema: cancelRequestSchema,
+    values: (form) => ({ id: String(form.get("id") ?? "") }),
   });
-
-  revalidatePath("/dashboard");
-
-  return { message: "Request cancelled.", ok: true };
-}
-
-function parseTarget(formData: FormData) {
-  const id = String(formData.get("id") ?? "");
-  const type = String(formData.get("type") ?? "") as Target;
-
-  if (!id || !TARGETS.includes(type)) {
-    throw new Error("Invalid queue action target.");
-  }
-
-  return {
-    id,
-    type,
-  };
 }
 
 async function retryTarget(input: {
