@@ -51,11 +51,6 @@ Actions per state:
 
 ## Test ids
 
-`screen-single-window`, `prompt-input`, `prompt-submit`,
-`track-count-select`, `duration-select`, `feed`, `job-group`, `track-card`,
-`play-track`, `publish-now`, `publish-options`, `schedule-option`,
-`schedule-dialog`, `schedule-input`, `schedule-confirm`, `discard-track`,
-`edit-details`, `save-details`, `publish-early`, `cancel-schedule`,
-`watch-on-youtube`, `track-retry`, `cancel-generation`, `usage-counter`,
-`account-menu-trigger`, `connect-gate`, `feed-refresh-error`, `sign-out`,
-`back-to-studio`.
+The canonical inventory of every `data-testid` in the app is the generated
+`docs/testids.md` — regenerate with `pnpm docs:testids`. Do not maintain a
+manual list here.

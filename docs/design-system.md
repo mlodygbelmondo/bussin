@@ -80,6 +80,13 @@ ember-orange) are backdrop-only and must be used through `<Aurora />`.
 The hero prompt card may use `rounded-xl`. Avatars and dots may be
 `rounded-full`. Nothing else.
 
+### Elevation & fonts
+
+`--shadow-elevated` is the only shadow, reserved for floating surfaces
+(dialogs, popovers, dropdowns). Fonts are exposed as `--font-sans` (Geist
+Sans), `--font-mono` (Geist Mono), and `--font-display` (Bricolage
+Grotesque) — see the Typography principle for when each applies.
+
 ### Spacing & type
 
 Tailwind defaults (4px base). Type scale in practice: `text-xs` meta,
@@ -98,6 +105,23 @@ legacy `.status-pill` classes exist only for unrouted legacy modules.
 Buttons: `default` (solid ember) is the one primary action per view;
 `outline`/`secondary` for everything else; `ghost` for icon buttons;
 `destructive` only for irreversible actions.
+
+### Authoring a primitive
+
+One convention, follow it exactly:
+
+- A primitive with **variants** (visual alternatives a caller picks —
+  Button, Badge) declares them with **CVA** (`class-variance-authority`)
+  and exports the `cva` result so variants are typed.
+- A primitive **without variants** (Input, Dialog, Table, Skeleton…) is a
+  plain component with a single token-based class string merged via
+  `cn(...)` — no CVA boilerplate for a single look.
+- Either way: token utilities only (`bg-card`, `border-line`,
+  `text-muted-foreground`…) — raw palette classes and hex/oklch literals
+  are banned in components; new colors are added as tokens in
+  `globals.css` first.
+- Every new primitive or variant gets a section in the `/design`
+  playground (`src/app/design/design-showcase.tsx`) in the same change.
 
 ## Motion
 

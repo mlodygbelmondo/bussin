@@ -8,6 +8,13 @@ Paczka jest podzielona tak, żeby wrzucać agentom zadania etapami: najpierw bac
 > `docs/plans/2026-06-12-single-window-redesign-design.md`, design system:
 > `docs/design-system.md`, checklista przed wypuszczeniem: `docs/launch-checklist.md`.
 
+> **2026-07-04 — legacy UI usunięte.** Moduły starych ekranów
+> (`dashboard`, `generation` UI, `queue`, `library`, `scheduled` UI,
+> `tracks` UI) zostały skasowane z repo; żywa logika mieszka w
+> `src/modules/feed` i `src/server/services`. Słownik domeny:
+> `.ai/CONTEXT.md`. Lista testidów: `docs/testids.md` (generowana przez
+> `pnpm docs:testids`).
+
 ## Kolejność wykonywania
 
 1. `01_backend/01_project_foundation.md`

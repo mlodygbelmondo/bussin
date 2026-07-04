@@ -8,7 +8,9 @@ experience is one screen at `/dashboard`: a prompt box plus a feed that
 carries every track from generation through render to YouTube. Videos are
 static-image MP4s rendered with FFmpeg in an external worker.
 
-Design reference: `docs/plans/2026-06-12-single-window-redesign-design.md`.
+Domain glossary (use these words, in code and in conversation):
+`.ai/CONTEXT.md`. Design reference:
+`docs/plans/2026-06-12-single-window-redesign-design.md`.
 
 ## Stack
 
@@ -24,29 +26,48 @@ Design reference: `docs/plans/2026-06-12-single-window-redesign-design.md`.
 
 ## The Single Window
 
-- `/dashboard` is the only authenticated screen
-  (spec: `docs/03_screens/11_single_window.md`). It lives in
-  `src/modules/feed`: server query (`feed.queries.ts`), server actions
-  (`feed.actions.ts`), client UI (`single-window.tsx`, `feed-cards.tsx`),
-  polling endpoint (`src/app/api/feed/route.ts`).
-- Channels, billing, and settings pages stay reachable only from the avatar
-  menu and carry a "Back to studio" bar.
-- Scheduling is per track via the Publish split button. The ONLY dispatch
-  mechanism is the pg_cron job `scheduled-publish-dispatcher` →
-  `dispatch_scheduled_youtube_uploads()`; it skips uploads whose render is
-  not finished. There is no worker-side scheduled-publish consumer — do not
-  reintroduce one.
+`/dashboard` is the only authenticated screen
+(spec: `docs/03_screens/11_single_window.md`). Everything lives in
+`src/modules/feed` — one file per job:
 
-## Hidden Legacy Modules
+- `feed.queries.ts` — server query; derives each track's feed status from
+  the raw track/render/upload rows (`deriveTrackStatus`).
+- `feed.actions.ts` — generation prompt + track detail edits.
+- `publish.actions.ts` — approve / reject / publish now / schedule a track.
+- `schedule.actions.ts` — reschedule / cancel / publish-early for scheduled uploads.
+- `jobs.actions.ts` — retry and cancel for failed/running jobs.
+- `workspace-context.ts` — `requireWorkspace()`, the auth+workspace guard
+  every action calls first.
+- `single-window.tsx` — the screen: hero prompt, connect gate, polling.
+- `feed-cards.tsx` — job-group card; `track-card.tsx` — track row with
+  dialogs and audio preview.
+- `status-presentation.tsx` — status → `Badge` label/variant mapping.
+- `use-feed-action.ts` — client hook that runs any feed action with
+  toast + feed invalidation. All feed mutations go through it.
+- `src/app/api/feed/route.ts` — polling endpoint (4s while work is active).
 
-These modules remain in the repo but are NOT routed and must not be
-resurrected without an explicit product decision: `src/modules/dashboard`
-(KPI home), `src/modules/generation` UI form, `src/modules/queue`,
-`src/modules/library`, `src/modules/scheduled` UI, `src/modules/tracks`
-preview screen UI. Their server actions are still used by the feed. The
-routes `/dashboard/{generate,queue,library,scheduled,tracks/[trackId]}`
-redirect to `/dashboard`. The screen specs `docs/03_screens/03`–`08` are
-superseded.
+Channels, billing, and settings pages stay reachable only from the avatar
+menu and carry a "Back to studio" bar. Scheduling is per track via the
+Publish split button. The ONLY dispatch mechanism is the pg_cron job
+`scheduled-publish-dispatcher` → `dispatch_scheduled_youtube_uploads()`;
+it skips uploads whose render is not finished. There is no worker-side
+scheduled-publish consumer — do not reintroduce one.
+
+The legacy multi-screen UI (KPI dashboard, generate form, queue, library,
+scheduled, track preview) was deleted in 2026-07; the routes
+`/dashboard/{generate,queue,library,scheduled,tracks/[trackId]}` redirect
+to `/dashboard`, and screen specs `docs/03_screens/03`–`08` are superseded.
+Do not rebuild those screens without an explicit product decision.
+
+## Status Vocabulary
+
+`src/server/services/status-transition.service.ts` is the single source of
+truth for every track/render/upload/generation-request status and the legal
+transitions between them. The DB columns are plain text — this module is
+the only typo guard. Import its types (`TrackStatus`, `VideoRenderStatus`,
+`YoutubeUploadStatus`, `GenerationRequestStatus`), arrays, and type guards
+in app and worker code; never introduce a status string that is not in the
+TRANSITIONS map.
 
 ## Design System
 
@@ -61,21 +82,29 @@ gradients, glassmorphism, glows, or textures; status display uses the
 `src/components/common/motion.tsx`, enter-only reveals, transform/opacity
 only, reduced-motion respected (see the Motion section of the design doc).
 
+The living reference is the dev-only playground at `/design`
+(`src/app/design`) — every primitive, variant, and state on real tokens.
+When you add or change a primitive, update the playground in the same
+change.
+
 ## Repository Map
 
 - `src/app`: App Router pages, layouts, route handlers, server actions entrypoints.
 - `src/components/ui`: shared primitive UI components (CVA + tokens).
-- `src/components/common`: shared product components.
+- `src/components/common`: shared product components (logo, motion, starfield, top bar).
 - `src/modules`: feature modules; `src/modules/feed` is the live product surface.
-- `src/server/services`: server-only business logic and integration orchestration.
+- `src/server/services`: server-only business logic, repositories, and
+  integration orchestration (incl. the status vocabulary).
 - `src/server/validators`: Zod schemas for server-side validation
   (generation, billing, and friends).
-- `src/lib/supabase`: Supabase clients and generated database types.
+- `src/lib/supabase`: Supabase clients; `src/lib/database.types.ts`:
+  generated DB types (shared with the worker — regenerate with `pnpm db:types`).
 - `worker/src`: external worker jobs, queue client, and service adapters.
+  It imports shared code from `src/` via relative paths (`../../src/...`).
 - `supabase/migrations`: database schema, RLS policies, queues, cron, and storage setup.
 - `supabase/functions`: Supabase Edge Functions.
-- `docs`: design doc, design system, launch checklist, staged specs
-  (see `docs/README.md` for what is superseded).
+- `docs`: design doc, design system, testid inventory, launch checklist,
+  staged specs (see `docs/README.md` for what is superseded).
 - `design-reference`: visual references (predate the single-window redesign).
 - `tests`: unit, integration, and e2e tests.
 
@@ -89,6 +118,12 @@ only, reduced-motion respected (see the Motion section of the design doc).
 - Run unit/integration tests with `pnpm test`.
 - Run e2e tests with `pnpm test:e2e` only when explicitly asked to test the app.
 - Generate Supabase types with `pnpm db:types` after schema changes.
+- Regenerate the testid inventory with `pnpm docs:testids` after adding/removing `data-testid`s.
+
+Known-failing without local env: `tests/integration/supabase-rls.test.ts`
+and `tests/integration/migration-policies.test.ts` need a running local
+Supabase; `tests/unit/billing.test.ts` needs real Stripe price IDs in env.
+Do not chase these unless your change touches billing or RLS.
 
 ## Runtime Testing Rule
 
@@ -126,6 +161,8 @@ This is not the Next.js you know: this project uses Next.js 16 with breaking API
 - FFmpeg work belongs only in the external worker.
 - Trust Stripe subscription/payment state from webhooks, not client redirects.
 - Keep YouTube and Suno adapters mockable behind service boundaries.
+- Status strings come from the status vocabulary
+  (`status-transition.service.ts`) — never hardcode one that isn't there.
 - Store async failure details in clear `failure_reason` fields where the schema supports it — the feed surfaces them verbatim with a Retry button.
 - Users bring their own Suno account; plan limits (free tier = trial) are
   enforced server-side in `plan-limits.service` before generation.
@@ -139,13 +176,19 @@ This is not the Next.js you know: this project uses Next.js 16 with breaking API
 ## UI Rules
 
 - Follow `docs/design-system.md`; tokens only, no new colors or effects.
+- New primitives follow the authoring convention in the design doc: CVA
+  variants when a primitive has variants, plain token classes otherwise;
+  showcase every primitive in `/design`.
 - The single window must keep loading, empty (connect gate), and error states working.
 - Mutations surface success/error feedback with toasts; async failures show `failure_reason` plus Retry.
-- Add stable `data-testid` selectors for Playwright-relevant UI (the canonical list is in `docs/03_screens/11_single_window.md`).
+- Add stable `data-testid` selectors for Playwright-relevant UI. The
+  canonical inventory is the generated `docs/testids.md` — check it before
+  naming a new one, rerun `pnpm docs:testids` after.
 - Use lucide-react icons and existing `src/components/ui` primitives.
 
 ## Documentation And Task Specs
 
+- `.ai/CONTEXT.md` is the domain glossary — use its terms in code, commits, and docs.
 - `docs/README.md` lists the staged task order and what is superseded.
 - ACTIVE screen specs: `03_screens/01_auth_login_signup.md`,
   `02_onboarding_connect_accounts.md`, `09_channels_management.md`,

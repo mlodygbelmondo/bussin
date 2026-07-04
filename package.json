@@ -18,7 +18,8 @@
     "supabase:stop": "supabase stop",
     "supabase:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local > src/lib/database.types.ts",
-    "supabase:types": "pnpm db:types"
+    "supabase:types": "pnpm db:types",
+    "docs:testids": "node scripts/generate-testids.mjs"
   },
   "pnpm": {
     "overrides": {
