@@ -1,3 +1,8 @@
+import {
+  assertStatusTransition,
+  type YoutubeUploadStatus,
+} from "./status-transition.service";
+
 export type ScheduledActionResult = {
   message: string;
   ok: boolean;
@@ -80,7 +85,7 @@ export async function rescheduleUpload(input: {
   }
 
   const upload = await input.repository.updateUpload({
-    allowedStatuses: ["draft", "failed", "scheduled"],
+    allowedStatuses: guardedFrom(["draft", "failed", "scheduled"], "scheduled"),
     uploadId: input.uploadId,
     values: {
       failure_reason: null,
@@ -136,7 +141,7 @@ export async function cancelScheduledUpload(input: {
   }
 
   const upload = await input.repository.updateUpload({
-    allowedStatuses: ["draft", "scheduled"],
+    allowedStatuses: guardedFrom(["draft", "scheduled"], "cancelled"),
     uploadId: input.uploadId,
     values: { status: "cancelled" },
     workspaceId: input.workspaceId,
@@ -222,6 +227,19 @@ export function normalizeFutureSchedule(value: FormDataEntryValue | null) {
   }
 
   return date.toISOString();
+}
+
+/**
+ * Asserts every from -> to pair against the status vocabulary before it is
+ * used as a set-based update filter, so this service cannot express an
+ * illegal youtube_uploads transition.
+ */
+function guardedFrom(from: YoutubeUploadStatus[], to: YoutubeUploadStatus) {
+  for (const status of from) {
+    assertStatusTransition("youtube_uploads", status, to);
+  }
+
+  return from;
 }
 
 function canReschedule(status: string) {

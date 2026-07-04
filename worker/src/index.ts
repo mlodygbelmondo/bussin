@@ -5,6 +5,11 @@ import { pathToFileURL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "../../src/lib/database.types";
 import { createSecretsService } from "../../src/server/services/secrets.service";
+import { InvalidStatusTransitionError } from "../../src/server/services/status-transition.service";
+import {
+  StaleStatusError,
+  StatusRowNotFoundError,
+} from "../../src/server/services/status-writer.service";
 import { loadWorkerConfig, type WorkerConfig } from "./config";
 import { startHealthServer } from "./health";
 import { runMaintenanceJob } from "./jobs/maintenance";
@@ -272,50 +277,81 @@ async function markFailed(
   switch (queueName) {
     case QUEUE_NAMES.generation: {
       const job = payload as GenerationJobPayload;
-      await input.database.updateTrackStatus({
-        failureReason: input.failureReason,
-        status: "failed",
-        trackId: job.trackId,
-        workspaceId: job.workspaceId,
-      });
+      await markFailedIfStillLegal(() =>
+        input.database.updateTrackStatus({
+          failureReason: input.failureReason,
+          status: "failed",
+          trackId: job.trackId,
+          workspaceId: job.workspaceId,
+        }),
+      );
       break;
     }
     case QUEUE_NAMES.sunoPolling: {
       const job = payload as SunoPollingJobPayload;
-      await input.database.updateTrackStatus({
-        failureReason: input.failureReason,
-        status: "failed",
-        trackId: job.trackId,
-        workspaceId: job.workspaceId,
-      });
+      await markFailedIfStillLegal(() =>
+        input.database.updateTrackStatus({
+          failureReason: input.failureReason,
+          status: "failed",
+          trackId: job.trackId,
+          workspaceId: job.workspaceId,
+        }),
+      );
       break;
     }
     case QUEUE_NAMES.render: {
       const job = payload as RenderJobPayload;
-      await input.database.updateTrackStatus({
-        failureReason: input.failureReason,
-        status: "failed",
-        trackId: job.trackId,
-        workspaceId: job.workspaceId,
-      });
-      await input.database.updateVideoRenderStatus({
-        failureReason: input.failureReason,
-        status: "failed",
-        videoRenderId: job.videoRenderId,
-        workspaceId: job.workspaceId,
-      });
+      await markFailedIfStillLegal(() =>
+        input.database.updateTrackStatus({
+          failureReason: input.failureReason,
+          status: "failed",
+          trackId: job.trackId,
+          workspaceId: job.workspaceId,
+        }),
+      );
+      await markFailedIfStillLegal(() =>
+        input.database.updateVideoRenderStatus({
+          failureReason: input.failureReason,
+          status: "failed",
+          videoRenderId: job.videoRenderId,
+          workspaceId: job.workspaceId,
+        }),
+      );
       break;
     }
     case QUEUE_NAMES.youtubeUpload: {
       const job = payload as YoutubeUploadJobPayload;
-      await input.database.updateYoutubeUploadStatus({
-        failureReason: input.failureReason,
-        status: "failed",
-        workspaceId: job.workspaceId,
-        youtubeUploadId: job.youtubeUploadId,
-      });
+      await markFailedIfStillLegal(() =>
+        input.database.updateYoutubeUploadStatus({
+          failureReason: input.failureReason,
+          status: "failed",
+          workspaceId: job.workspaceId,
+          youtubeUploadId: job.youtubeUploadId,
+        }),
+      );
       break;
     }
+  }
+}
+
+/**
+ * A row may legally refuse the "failed" write when the user already moved it
+ * on (e.g. cancelled the request or deleted the row) between the job failing
+ * and this cleanup. That must not block acking the queue message.
+ */
+async function markFailedIfStillLegal(write: () => Promise<void>) {
+  try {
+    await write();
+  } catch (error) {
+    if (
+      error instanceof InvalidStatusTransitionError ||
+      error instanceof StaleStatusError ||
+      error instanceof StatusRowNotFoundError
+    ) {
+      return;
+    }
+
+    throw error;
   }
 }
 
